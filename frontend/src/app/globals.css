@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --navy-900: #0a0e1a;
+  --navy-800: #0f1629;
+  --navy-700: #151d35;
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-hover: rgba(255, 255, 255, 0.08);
+}
+
+body {
+  @apply bg-navy-900 text-white antialiased;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+/* Glassmorphism panel utility */
+@layer components {
+  .glass-panel {
+    @apply bg-glass border border-glass-border rounded-xl backdrop-blur-xl;
+  }
+  .glass-panel-light {
+    @apply bg-glass-light border border-glass-border rounded-xl backdrop-blur-xl;
+  }
+  .glass-input {
+    @apply bg-navy-700 border border-glass-border rounded-lg px-4 py-2.5
+           text-white placeholder-gray-500
+           focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40
+           transition-all duration-200;
+  }
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-500 text-white font-medium
+           px-6 py-2.5 rounded-lg transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply bg-glass hover:bg-glass-light border border-glass-border
+           text-white font-medium px-6 py-2.5 rounded-lg
+           transition-all duration-200;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--navy-900);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
