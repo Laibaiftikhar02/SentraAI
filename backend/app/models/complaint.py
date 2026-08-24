@@ -31,6 +31,9 @@ class Complaint(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     zone_id = Column(
         UUID(as_uuid=True), ForeignKey("campus_zones.id"), nullable=True
     )
+    category_id = Column(
+        UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True
+    )  # user-submitted or AI-classified
     duplicate_cluster_id = Column(
         UUID(as_uuid=True), ForeignKey("duplicate_clusters.id"), nullable=True
     )
@@ -46,6 +49,7 @@ class Complaint(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     user = relationship("User", back_populates="complaints")
     department = relationship("Department", back_populates="complaints")
     zone = relationship("CampusZone", back_populates="complaints")
+    category = relationship("Category", back_populates="complaints")
     duplicate_cluster = relationship("DuplicateCluster", back_populates="complaints")
     history = relationship(
         "ComplaintHistory", back_populates="complaint", order_by="ComplaintHistory.created_at"

@@ -12,8 +12,9 @@ class ApiClient {
 
   async request<T>(path: string, options: ApiOptions = {}): Promise<T> {
     const { auth = true, headers: customHeaders, ...rest } = options;
+    const isFormData = rest.body instanceof FormData;
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(customHeaders as Record<string, string>),
     };
 
@@ -67,6 +68,13 @@ class ApiClient {
 
   delete<T>(path: string) {
     return this.request<T>(path, { method: "DELETE" });
+  }
+
+  postForm<T>(path: string, formData: FormData) {
+    return this.request<T>(path, {
+      method: "POST",
+      body: formData,
+    });
   }
 }
 

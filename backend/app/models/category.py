@@ -22,3 +22,4 @@ class Category(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     children = relationship("Category", backref="parent", remote_side="Category.id")
     routing_rules = relationship("RoutingRule", back_populates="category")
     priority_rules = relationship("PriorityRule", back_populates="category")
+    complaints = relationship("Complaint", back_populates="category")
