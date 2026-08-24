@@ -38,9 +38,11 @@ class AIPredictionResponse(BaseModel):
     category_confidence: float | None = None
     priority: str | None = None
     priority_confidence: float | None = None
+    priority_rationale: str | None = None
     department: str | None = None
     routing_confidence: float | None = None
     duplicate_detected: bool = False
+    duplicate_cluster_id: UUID | None = None
     needs_manual_review: bool = False
     provider: str | None = None
 

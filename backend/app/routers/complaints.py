@@ -24,6 +24,7 @@ from app.schemas.complaint import (
     HistoryEntryResponse,
 )
 from app.services import complaint_service
+from app.services.ai_processing import process_complaint_ai
 from app.utils.file_storage import get_file_path
 
 router = APIRouter(prefix="/api/v1", tags=["complaints"])
@@ -203,9 +204,11 @@ def get_complaint(
                 "category_confidence": c.ai_prediction.category_confidence,
                 "priority": c.ai_prediction.priority,
                 "priority_confidence": c.ai_prediction.priority_confidence,
+                "priority_rationale": c.ai_prediction.priority_rationale,
                 "department": c.ai_prediction.department,
                 "routing_confidence": c.ai_prediction.routing_confidence,
                 "duplicate_detected": c.ai_prediction.duplicate_detected,
+                "duplicate_cluster_id": c.ai_prediction.duplicate_cluster_id,
                 "needs_manual_review": c.ai_prediction.needs_manual_review,
                 "provider": c.ai_prediction.provider,
             }
@@ -227,6 +230,45 @@ def get_complaint_history(
     """Return the append-only timeline for a complaint."""
     history = complaint_service.get_complaint_history(db, complaint_id, current_user)
     return [HistoryEntryResponse.model_validate(h) for h in history]
+
+
+# ── POST /complaints/{complaint_id}/reprocess ────────────────────────────────
+
+@router.post("/complaints/{complaint_id}/reprocess")
+def reprocess_complaint_ai(
+    complaint_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Re-run AI processing on an existing complaint.
+
+    Available to admins and super_admins (within their scope) and to the
+    complaint owner if AI status is 'unavailable'.
+    """
+    complaint = complaint_service.get_complaint(db, complaint_id, current_user)
+
+    # Remove existing AI prediction so we can regenerate
+    if complaint.ai_prediction:
+        db.delete(complaint.ai_prediction)
+        db.flush()
+
+    # Reset status before reprocessing
+    complaint.ai_status = None
+    db.commit()
+    db.refresh(complaint)
+
+    # Run AI pipeline
+    process_complaint_ai(db, complaint)
+    db.refresh(complaint)
+
+    return {
+        "data": {
+            "id": str(complaint.id),
+            "ai_status": complaint.ai_status,
+            "priority": complaint.priority,
+            "department_id": str(complaint.department_id) if complaint.department_id else None,
+        }
+    }
 
 
 # ── GET /complaints/{complaint_id}/attachments/{attachment_id}/download ──────

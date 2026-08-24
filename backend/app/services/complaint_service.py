@@ -27,6 +27,7 @@ from app.models.complaint_history import ComplaintHistory
 from app.models.department import Department
 from app.models.user import User
 from app.schemas.complaint import CreateComplaintFields
+from app.services.ai_processing import process_complaint_ai
 from app.utils.file_storage import save_upload
 
 
@@ -72,9 +73,10 @@ async def create_complaint(
     fields: CreateComplaintFields,
     file: UploadFile | None = None,
 ) -> Complaint:
-    """Persist a new complaint with optional attachment.
+    """Persist a new complaint with optional attachment, then trigger AI triage.
 
-    AI processing is NOT triggered here (Phase 3).
+    The complaint is always saved FIRST.  AI processing runs afterwards
+    and never prevents the complaint from being stored (PMD / AI Contract §14).
     """
     # Validate zone belongs to org if provided
     if fields.zone_id:
@@ -148,6 +150,11 @@ async def create_complaint(
 
     db.commit()
     db.refresh(complaint)
+
+    # ── Phase 3: AI triage (runs after complaint is safely persisted) ──
+    process_complaint_ai(db, complaint)
+    db.refresh(complaint)
+
     return complaint
 
 

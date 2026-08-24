@@ -6,12 +6,15 @@ import { fetchCurrentUser, clearToken, User } from "@/lib/auth";
 import {
   getComplaint,
   getComplaintHistory,
+  reprocessComplaint,
   ComplaintDetail,
   HistoryEntry,
   statusLabel,
   statusColor,
   priorityColor,
   formatDate,
+  aiStatusLabel,
+  confidencePct,
 } from "@/lib/complaints";
 
 export default function ComplaintDetailPage() {
@@ -24,6 +27,7 @@ export default function ComplaintDetailPage() {
   const [complaint, setComplaint] = useState<ComplaintDetail | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [error, setError] = useState("");
+  const [reprocessing, setReprocessing] = useState(false);
 
   useEffect(() => {
     fetchCurrentUser()
@@ -81,6 +85,24 @@ export default function ComplaintDetailPage() {
   }
 
   if (!complaint) return null;
+
+  async function handleReprocess() {
+    setReprocessing(true);
+    try {
+      await reprocessComplaint(complaintId);
+      // Reload complaint data
+      const [updated, hist] = await Promise.all([
+        getComplaint(complaintId),
+        getComplaintHistory(complaintId).catch(() => []),
+      ]);
+      setComplaint(updated);
+      setHistory(hist);
+    } catch {
+      setError("AI reprocessing failed. Please try again later.");
+    } finally {
+      setReprocessing(false);
+    }
+  }
 
   return (
     <div className="min-h-screen p-6">
@@ -189,15 +211,54 @@ export default function ComplaintDetailPage() {
             </div>
           )}
 
+          {/* AI Status Badge */}
+          {complaint.ai_status && (
+            <div className="glass-panel p-4 flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-xs uppercase tracking-wide">
+                  AI Triage Status
+                </p>
+                <p
+                  className={`text-sm font-medium mt-1 ${
+                    complaint.ai_status === "completed"
+                      ? "text-green-400"
+                      : complaint.ai_status === "pending"
+                        ? "text-yellow-400"
+                        : "text-red-400"
+                  }`}
+                >
+                  {aiStatusLabel(complaint.ai_status)}
+                </p>
+              </div>
+              {(complaint.ai_status === "unavailable" ||
+                complaint.ai_status === "timeout" ||
+                complaint.ai_status === "invalid") && (
+                <button
+                  onClick={handleReprocess}
+                  disabled={reprocessing}
+                  className="btn-secondary text-xs"
+                >
+                  {reprocessing ? "Processing\u2026" : "Retry AI"}
+                </button>
+              )}
+            </div>
+          )}
+
           {/* AI Prediction (if available) */}
           {complaint.ai_prediction && (
             <div className="glass-panel p-6 border-blue-500/20">
               <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                 <span className="text-blue-400">&#9881;</span>
                 AI Analysis
+                {complaint.ai_prediction.needs_manual_review && (
+                  <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full">
+                    Needs Manual Review
+                  </span>
+                )}
               </h2>
+
               {complaint.ai_prediction.summary && (
-                <div className="mb-3">
+                <div className="mb-4">
                   <p className="text-xs text-gray-400 uppercase tracking-wide">
                     Summary
                   </p>
@@ -206,6 +267,7 @@ export default function ComplaintDetailPage() {
                   </p>
                 </div>
               )}
+
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                 {complaint.ai_prediction.category && (
                   <div>
@@ -213,13 +275,20 @@ export default function ComplaintDetailPage() {
                     <p className="font-medium">
                       {complaint.ai_prediction.category}
                     </p>
+                    <p className="text-xs text-gray-500">
+                      Confidence: {confidencePct(complaint.ai_prediction.category_confidence)}
+                    </p>
                   </div>
                 )}
                 {complaint.ai_prediction.priority && (
                   <div>
                     <p className="text-gray-400">Priority</p>
-                    <p className="font-medium">
-                      {complaint.ai_prediction.priority}
+                    <p className={`font-medium ${priorityColor(complaint.ai_prediction.priority)}`}>
+                      {complaint.ai_prediction.priority.charAt(0).toUpperCase() +
+                        complaint.ai_prediction.priority.slice(1)}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Confidence: {confidencePct(complaint.ai_prediction.priority_confidence)}
                     </p>
                   </div>
                 )}
@@ -229,12 +298,38 @@ export default function ComplaintDetailPage() {
                     <p className="font-medium">
                       {complaint.ai_prediction.department}
                     </p>
+                    <p className="text-xs text-gray-500">
+                      Confidence: {confidencePct(complaint.ai_prediction.routing_confidence)}
+                    </p>
                   </div>
                 )}
               </div>
-              <p className="text-xs text-gray-500 mt-3 italic">
+
+              {complaint.ai_prediction.priority_rationale && (
+                <div className="mt-3 text-sm">
+                  <p className="text-gray-400">Priority Rationale</p>
+                  <p className="text-gray-300 mt-0.5 italic">
+                    {complaint.ai_prediction.priority_rationale}
+                  </p>
+                </div>
+              )}
+
+              {complaint.ai_prediction.duplicate_detected && (
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full">
+                    Possible Duplicate Detected
+                  </span>
+                </div>
+              )}
+
+              <p className="text-xs text-gray-500 mt-4 italic">
                 AI recommendations are advisory and subject to admin
                 verification.
+                {complaint.ai_prediction.provider && (
+                  <span className="ml-2">
+                    Provider: {complaint.ai_prediction.provider}
+                  </span>
+                )}
               </p>
             </div>
           )}

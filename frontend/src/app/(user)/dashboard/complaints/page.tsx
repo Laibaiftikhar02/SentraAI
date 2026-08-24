@@ -123,6 +123,9 @@ export default function ComplaintsListPage() {
                 <th className="text-left text-sm font-medium text-gray-400 px-4 py-3">
                   Files
                 </th>
+                <th className="text-left text-sm font-medium text-gray-400 px-4 py-3">
+                  AI
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -161,7 +164,18 @@ export default function ComplaintsListPage() {
                     {formatDate(c.created_at)}
                   </td>
                   <td className="px-4 py-3 text-gray-400 text-sm">
-                    {c.attachment_count > 0 ? `${c.attachment_count}` : "—"}
+                    {c.attachment_count > 0 ? `${c.attachment_count}` : "\u2014"}
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {c.ai_status === "completed" ? (
+                      <span className="text-green-400 text-xs">&#10003;</span>
+                    ) : c.ai_status === "pending" ? (
+                      <span className="text-yellow-400 text-xs">&#8987;</span>
+                    ) : c.ai_status === "unavailable" ? (
+                      <span className="text-red-400 text-xs">&#10007;</span>
+                    ) : (
+                      <span className="text-gray-600 text-xs">\u2014</span>
+                    )}
                   </td>
                 </tr>
               ))}

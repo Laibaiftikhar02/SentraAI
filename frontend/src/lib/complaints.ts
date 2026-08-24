@@ -19,9 +19,11 @@ export interface AIPrediction {
   category_confidence: number | null;
   priority: string | null;
   priority_confidence: number | null;
+  priority_rationale: string | null;
   department: string | null;
   routing_confidence: number | null;
   duplicate_detected: boolean;
+  duplicate_cluster_id: string | null;
   needs_manual_review: boolean;
   provider: string | null;
 }
@@ -154,6 +156,21 @@ export async function getZones(): Promise<ZoneOption[]> {
   return api.get<ZoneOption[]>("/reference/zones");
 }
 
+export interface ReprocessResult {
+  data: {
+    id: string;
+    ai_status: string | null;
+    priority: string | null;
+    department_id: string | null;
+  };
+}
+
+export async function reprocessComplaint(
+  id: string
+): Promise<ReprocessResult> {
+  return api.post<ReprocessResult>(`/complaints/${id}/reprocess`);
+}
+
 // ── Utility ──────────────────────────────────────────────────────────────────
 
 export function statusLabel(status: string): string {
@@ -199,4 +216,20 @@ export function formatDate(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+export function aiStatusLabel(status: string | null): string {
+  const map: Record<string, string> = {
+    pending: "Processing\u2026",
+    completed: "Completed",
+    unavailable: "Unavailable",
+    timeout: "Timed Out",
+    invalid: "Invalid Output",
+  };
+  return map[status || ""] || "Pending";
+}
+
+export function confidencePct(value: number | null): string {
+  if (value == null) return "\u2014";
+  return `${Math.round(value * 100)}%`;
 }
