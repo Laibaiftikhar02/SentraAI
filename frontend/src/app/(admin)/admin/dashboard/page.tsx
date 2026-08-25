@@ -163,6 +163,9 @@ export default function AdminDashboard() {
           <Link href="/admin/inbox" className="btn-primary">
             Complaint Inbox
           </Link>
+          <Link href="/admin/heatmap" className="btn-secondary">
+            Campus Heatmap
+          </Link>
         </div>
       </div>
 

@@ -281,7 +281,10 @@ export async function adminListComplaints(params?: {
   priority?: string;
   category?: string;
   zone?: string;
+  department?: string;
   search?: string;
+  date_from?: string;
+  date_to?: string;
 }): Promise<ComplaintListResponse> {
   const query = new URLSearchParams();
   if (params?.page) query.set("page", String(params.page));
@@ -290,7 +293,10 @@ export async function adminListComplaints(params?: {
   if (params?.priority) query.set("priority", params.priority);
   if (params?.category) query.set("category", params.category);
   if (params?.zone) query.set("zone", params.zone);
+  if (params?.department) query.set("department", params.department);
   if (params?.search) query.set("search", params.search);
+  if (params?.date_from) query.set("date_from", params.date_from);
+  if (params?.date_to) query.set("date_to", params.date_to);
   const qs = query.toString();
   return api.get<ComplaintListResponse>(`/admin/complaints${qs ? `?${qs}` : ""}`);
 }

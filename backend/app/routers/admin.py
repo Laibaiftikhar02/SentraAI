@@ -25,6 +25,8 @@ from app.schemas.complaint import (
     ComplaintListItem,
     ComplaintListResponse,
 )
+from app.models.complaint_history import ComplaintHistory
+from app.models.user import User as UserModel
 from app.services import admin_service, complaint_service
 
 router = APIRouter(
@@ -46,7 +48,10 @@ def admin_list_complaints(
     priority: str | None = None,
     category: str | None = None,
     zone: str | None = None,
+    department: str | None = None,
     search: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
     current_user: CurrentUser = Depends(admin_user),
     db: Session = Depends(get_db),
 ):
@@ -55,8 +60,65 @@ def admin_list_complaints(
         db, current_user, page=page, per_page=per_page,
         status_filter=status, priority_filter=priority,
         category_filter=category, zone_filter=zone,
+        department_filter=department,
         search_filter=search,
+        date_from=date_from, date_to=date_to,
     )
+
+    # Resolve assigned admin names from reassignment history
+    complaint_ids = [c.id for c in result["items"]]
+    assigned_admin_map: dict = {}
+    if complaint_ids:
+        from sqlalchemy import func
+        # Get the most recent reassignment history entry per complaint
+        latest_reassignments = (
+            db.query(
+                ComplaintHistory.complaint_id,
+                func.max(ComplaintHistory.created_at).label("max_created"),
+            )
+            .filter(
+                ComplaintHistory.complaint_id.in_(complaint_ids),
+                ComplaintHistory.action == "reassigned",
+            )
+            .group_by(ComplaintHistory.complaint_id)
+            .subquery()
+        )
+        reassign_entries = (
+            db.query(ComplaintHistory)
+            .join(
+                latest_reassignments,
+                (ComplaintHistory.complaint_id == latest_reassignments.c.complaint_id)
+                & (ComplaintHistory.created_at == latest_reassignments.c.max_created),
+            )
+            .all()
+        )
+        # Collect target user IDs from metadata
+        target_ids = set()
+        entry_by_complaint: dict = {}
+        for entry in reassign_entries:
+            entry_by_complaint[entry.complaint_id] = entry
+            meta = entry.metadata_json
+            if meta and "target_user_id" in meta:
+                target_ids.add(meta["target_user_id"])
+        # Batch-load user names
+        user_name_map: dict = {}
+        if target_ids:
+            users = (
+                db.query(UserModel.id, UserModel.name)
+                .filter(UserModel.id.in_(target_ids))
+                .all()
+            )
+            user_name_map = {str(u.id): u.name for u in users}
+        # Build the complaint_id → admin name map
+        for cid, entry in entry_by_complaint.items():
+            meta = entry.metadata_json
+            if meta and "target_user_id" in meta:
+                name = user_name_map.get(meta["target_user_id"])
+                if name:
+                    assigned_admin_map[cid] = name
+            # Fallback: use new_value (the admin name stored at reassignment time)
+            if cid not in assigned_admin_map and entry.new_value:
+                assigned_admin_map[cid] = entry.new_value
 
     items: list[ComplaintListItem] = []
     for c in result["items"]:
@@ -75,7 +137,7 @@ def admin_list_complaints(
                     if c.ai_prediction and c.ai_prediction.summary and len(c.ai_prediction.summary) > 120
                     else (c.ai_prediction.summary if c.ai_prediction else None)
                 ),
-                assigned_admin=None,
+                assigned_admin=assigned_admin_map.get(c.id),
                 created_at=c.created_at,
                 updated_at=c.updated_at,
                 attachment_count=len(c.attachments),

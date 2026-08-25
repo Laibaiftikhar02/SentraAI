@@ -54,12 +54,16 @@ def _complaint_visibility_filter(
     elif current_user.role == "admin":
         dept_ids = _get_admin_department_ids(db, current_user.user_id)
         if not dept_ids:
-            # Admin with no department assignments sees nothing
-            return query.filter(False)
-        # Admin sees complaints assigned to their department(s)
-        # OR complaints with no department (General Review) if the admin
-        # is a super_admin?  No — for Phase 2, admin sees their dept only.
-        return query.filter(Complaint.department_id.in_(dept_ids))
+            # Admin with no department assignments → only General Review
+            return query.filter(Complaint.department_id.is_(None))
+        # Admin sees complaints in their department(s) OR General Review (null dept)
+        from sqlalchemy import or_
+        return query.filter(
+            or_(
+                Complaint.department_id.in_(dept_ids),
+                Complaint.department_id.is_(None),
+            )
+        )
     else:
         # Regular user: own complaints only
         return query.filter(Complaint.user_id == current_user.user_id)
@@ -169,7 +173,10 @@ def list_complaints(
     priority_filter: str | None = None,
     category_filter: str | None = None,
     zone_filter: str | None = None,
+    department_filter: str | None = None,
     search_filter: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
 ) -> dict:
     """Return paginated complaints visible to the authenticated user."""
     query = (
@@ -192,6 +199,8 @@ def list_complaints(
         query = query.filter(Complaint.category_id == category_filter)
     if zone_filter:
         query = query.filter(Complaint.zone_id == zone_filter)
+    if department_filter:
+        query = query.filter(Complaint.department_id == department_filter)
     if search_filter:
         from sqlalchemy import or_
         pattern = f"%{search_filter}%"
@@ -201,6 +210,21 @@ def list_complaints(
                 Complaint.description.ilike(pattern),
             )
         )
+    if date_from:
+        from datetime import datetime, timezone
+        try:
+            dt = datetime.fromisoformat(date_from).replace(tzinfo=timezone.utc)
+            query = query.filter(Complaint.created_at >= dt)
+        except (ValueError, TypeError):
+            pass
+    if date_to:
+        from datetime import datetime, timezone, timedelta
+        try:
+            dt = datetime.fromisoformat(date_to).replace(tzinfo=timezone.utc)
+            # Include the entire end date (end of day)
+            query = query.filter(Complaint.created_at < dt + timedelta(days=1))
+        except (ValueError, TypeError):
+            pass
 
     total = query.count()
     complaints = (
@@ -309,9 +333,15 @@ def get_user_complaint_stats(db: Session, current_user: CurrentUser) -> dict:
     elif current_user.role == "admin":
         dept_ids = _get_admin_department_ids(db, current_user.user_id)
         if dept_ids:
-            base = base.filter(Complaint.department_id.in_(dept_ids))
+            from sqlalchemy import or_ as _or
+            base = base.filter(
+                _or(
+                    Complaint.department_id.in_(dept_ids),
+                    Complaint.department_id.is_(None),
+                )
+            )
         else:
-            base = base.filter(False)
+            base = base.filter(Complaint.department_id.is_(None))
     else:
         base = base.filter(Complaint.organization_id == current_user.organization_id)
 

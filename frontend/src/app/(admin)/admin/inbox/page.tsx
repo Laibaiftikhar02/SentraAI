@@ -2,11 +2,16 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { fetchCurrentUser, clearToken, User } from "@/lib/auth";
 import {
   adminListComplaints,
+  adminGetDepartments,
+  getCategories,
+  getZones,
   ComplaintListItem,
+  DepartmentOption,
+  CategoryOption,
+  ZoneOption,
   statusLabel,
   statusColor,
   priorityColor,
@@ -41,6 +46,11 @@ export default function AdminInboxPage() {
   const [page, setPage] = useState(1);
   const [fetching, setFetching] = useState(false);
 
+  // Reference data for filter dropdowns
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [zones, setZones] = useState<ZoneOption[]>([]);
+
   // Filters
   const [statusFilter, setStatusFilter] = useState(
     searchParams.get("status") || ""
@@ -48,6 +58,11 @@ export default function AdminInboxPage() {
   const [priorityFilter, setPriorityFilter] = useState(
     searchParams.get("priority") || ""
   );
+  const [departmentFilter, setDepartmentFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [zoneFilter, setZoneFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
 
@@ -59,6 +74,10 @@ export default function AdminInboxPage() {
           return;
         }
         setUser(u);
+        // Load reference data for filter dropdowns
+        adminGetDepartments().then(setDepartments).catch(() => {});
+        getCategories().then(setCategories).catch(() => {});
+        getZones().then(setZones).catch(() => {});
       })
       .catch(() => {
         clearToken();
@@ -75,7 +94,12 @@ export default function AdminInboxPage() {
       per_page: 20,
       status: statusFilter || undefined,
       priority: priorityFilter || undefined,
+      department: departmentFilter || undefined,
+      category: categoryFilter || undefined,
+      zone: zoneFilter || undefined,
       search: appliedSearch || undefined,
+      date_from: dateFrom || undefined,
+      date_to: dateTo || undefined,
     })
       .then((res) => {
         setComplaints(res.items);
@@ -83,7 +107,18 @@ export default function AdminInboxPage() {
       })
       .catch(() => {})
       .finally(() => setFetching(false));
-  }, [user, page, statusFilter, priorityFilter, appliedSearch]);
+  }, [
+    user,
+    page,
+    statusFilter,
+    priorityFilter,
+    departmentFilter,
+    categoryFilter,
+    zoneFilter,
+    dateFrom,
+    dateTo,
+    appliedSearch,
+  ]);
 
   useEffect(() => {
     fetchComplaints();
@@ -92,11 +127,42 @@ export default function AdminInboxPage() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
-  }, [statusFilter, priorityFilter, appliedSearch]);
+  }, [
+    statusFilter,
+    priorityFilter,
+    departmentFilter,
+    categoryFilter,
+    zoneFilter,
+    dateFrom,
+    dateTo,
+    appliedSearch,
+  ]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     setAppliedSearch(searchQuery);
+  }
+
+  const hasActiveFilters =
+    statusFilter ||
+    priorityFilter ||
+    departmentFilter ||
+    categoryFilter ||
+    zoneFilter ||
+    dateFrom ||
+    dateTo ||
+    appliedSearch;
+
+  function clearAllFilters() {
+    setStatusFilter("");
+    setPriorityFilter("");
+    setDepartmentFilter("");
+    setCategoryFilter("");
+    setZoneFilter("");
+    setDateFrom("");
+    setDateTo("");
+    setSearchQuery("");
+    setAppliedSearch("");
   }
 
   function handleLogout() {
@@ -141,55 +207,119 @@ export default function AdminInboxPage() {
 
       {/* Filters */}
       <div className="glass-panel p-4 mb-6">
-        <form onSubmit={handleSearch} className="flex flex-wrap gap-3 items-end">
-          <div className="flex-1 min-w-[200px]">
-            <input
-              type="text"
-              placeholder="Search by title or description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="glass-input w-full text-sm"
-            />
-          </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="glass-input text-sm"
-          >
-            {STATUS_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-            className="glass-input text-sm"
-          >
-            {PRIORITY_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          <button type="submit" className="btn-primary text-sm">
-            Search
-          </button>
-          {(statusFilter || priorityFilter || appliedSearch) && (
-            <button
-              type="button"
-              onClick={() => {
-                setStatusFilter("");
-                setPriorityFilter("");
-                setSearchQuery("");
-                setAppliedSearch("");
-              }}
-              className="btn-secondary text-sm"
+        <form onSubmit={handleSearch} className="space-y-3">
+          {/* Row 1: Search + Status + Priority */}
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="flex-1 min-w-[200px]">
+              <input
+                type="text"
+                placeholder="Search by title or description..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="glass-input w-full text-sm"
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="glass-input text-sm"
             >
-              Clear
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+              className="glass-input text-sm"
+            >
+              {PRIORITY_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Row 2: Department + Category + Zone */}
+          <div className="flex flex-wrap gap-3 items-end">
+            <select
+              value={departmentFilter}
+              onChange={(e) => setDepartmentFilter(e.target.value)}
+              className="glass-input text-sm"
+            >
+              <option value="">All Departments</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="glass-input text-sm"
+            >
+              <option value="">All Categories</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={zoneFilter}
+              onChange={(e) => setZoneFilter(e.target.value)}
+              className="glass-input text-sm"
+            >
+              <option value="">All Zones</option>
+              {zones.map((z) => (
+                <option key={z.id} value={z.id}>
+                  {z.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Row 3: Date range + Search/Clear buttons */}
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="flex items-center gap-2">
+              <label className="text-gray-400 text-xs whitespace-nowrap">
+                From:
+              </label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="glass-input text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-gray-400 text-xs whitespace-nowrap">
+                To:
+              </label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="glass-input text-sm"
+              />
+            </div>
+            <button type="submit" className="btn-primary text-sm">
+              Search
             </button>
-          )}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="btn-secondary text-sm"
+              >
+                Clear
+              </button>
+            )}
+          </div>
         </form>
       </div>
 
@@ -206,26 +336,32 @@ export default function AdminInboxPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-glass-border">
-                  <th className="text-left text-sm font-medium text-gray-400 px-4 py-3">
+                  <th className="text-left text-xs font-medium text-gray-400 px-3 py-3">
+                    ID
+                  </th>
+                  <th className="text-left text-xs font-medium text-gray-400 px-3 py-3">
                     Title
                   </th>
-                  <th className="text-left text-sm font-medium text-gray-400 px-4 py-3">
-                    Category
-                  </th>
-                  <th className="text-left text-sm font-medium text-gray-400 px-4 py-3">
-                    Department
-                  </th>
-                  <th className="text-left text-sm font-medium text-gray-400 px-4 py-3">
-                    Status
-                  </th>
-                  <th className="text-left text-sm font-medium text-gray-400 px-4 py-3">
+                  <th className="text-left text-xs font-medium text-gray-400 px-3 py-3">
                     Priority
                   </th>
-                  <th className="text-left text-sm font-medium text-gray-400 px-4 py-3">
-                    AI
+                  <th className="text-left text-xs font-medium text-gray-400 px-3 py-3">
+                    Category
                   </th>
-                  <th className="text-left text-sm font-medium text-gray-400 px-4 py-3">
-                    Created
+                  <th className="text-left text-xs font-medium text-gray-400 px-3 py-3">
+                    Department
+                  </th>
+                  <th className="text-left text-xs font-medium text-gray-400 px-3 py-3">
+                    Zone
+                  </th>
+                  <th className="text-left text-xs font-medium text-gray-400 px-3 py-3">
+                    AI Summary
+                  </th>
+                  <th className="text-left text-xs font-medium text-gray-400 px-3 py-3">
+                    Status
+                  </th>
+                  <th className="text-left text-xs font-medium text-gray-400 px-3 py-3">
+                    Assigned
                   </th>
                 </tr>
               </thead>
@@ -236,32 +372,17 @@ export default function AdminInboxPage() {
                     className="border-b border-glass-border/50 hover:bg-glass-light/30 transition-colors cursor-pointer"
                     onClick={() => router.push(`/admin/complaints/${c.id}`)}
                   >
-                    <td className="px-4 py-3">
-                      <span className="font-medium text-white">
+                    <td className="px-3 py-3 text-gray-500 text-xs font-mono whitespace-nowrap">
+                      {c.id.slice(0, 8)}
+                    </td>
+                    <td className="px-3 py-3 max-w-[200px]">
+                      <span className="font-medium text-white text-sm truncate block">
                         {c.title}
                       </span>
-                      {c.ai_summary && (
-                        <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[300px]">
-                          {c.ai_summary}
-                        </p>
-                      )}
                     </td>
-                    <td className="px-4 py-3 text-gray-400 text-sm">
-                      {c.category_name || "\u2014"}
-                    </td>
-                    <td className="px-4 py-3 text-gray-400 text-sm">
-                      {c.department_name || "\u2014"}
-                    </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3">
                       <span
-                        className={`text-sm font-medium ${statusColor(c.status)}`}
-                      >
-                        {statusLabel(c.status)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`text-sm font-medium ${priorityColor(c.priority)}`}
+                        className={`text-xs font-medium ${priorityColor(c.priority)}`}
                       >
                         {c.priority
                           ? c.priority.charAt(0).toUpperCase() +
@@ -269,10 +390,23 @@ export default function AdminInboxPage() {
                           : "\u2014"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm">
-                      {c.ai_status === "completed" ? (
+                    <td className="px-3 py-3 text-gray-400 text-xs">
+                      {c.category_name || "\u2014"}
+                    </td>
+                    <td className="px-3 py-3 text-gray-400 text-xs">
+                      {c.department_name || "\u2014"}
+                    </td>
+                    <td className="px-3 py-3 text-gray-400 text-xs">
+                      {c.zone_name || "\u2014"}
+                    </td>
+                    <td className="px-3 py-3 max-w-[180px]">
+                      {c.ai_summary ? (
+                        <p className="text-xs text-gray-500 truncate">
+                          {c.ai_summary}
+                        </p>
+                      ) : c.ai_status === "completed" ? (
                         <span className="text-green-400 text-xs">
-                          &#10003;
+                          &#10003; AI
                         </span>
                       ) : c.ai_status === "pending" ? (
                         <span className="text-yellow-400 text-xs">
@@ -288,8 +422,15 @@ export default function AdminInboxPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-gray-400 text-sm">
-                      {formatDate(c.created_at)}
+                    <td className="px-3 py-3">
+                      <span
+                        className={`text-xs font-medium ${statusColor(c.status)}`}
+                      >
+                        {statusLabel(c.status)}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-gray-400 text-xs whitespace-nowrap">
+                      {c.assigned_admin || "\u2014"}
                     </td>
                   </tr>
                 ))}
