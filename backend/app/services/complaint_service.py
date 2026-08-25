@@ -167,6 +167,9 @@ def list_complaints(
     per_page: int = 20,
     status_filter: str | None = None,
     priority_filter: str | None = None,
+    category_filter: str | None = None,
+    zone_filter: str | None = None,
+    search_filter: str | None = None,
 ) -> dict:
     """Return paginated complaints visible to the authenticated user."""
     query = (
@@ -176,6 +179,7 @@ def list_complaints(
             joinedload(Complaint.zone),
             joinedload(Complaint.category),
             joinedload(Complaint.attachments),
+            joinedload(Complaint.ai_prediction),
         )
     )
     query = _complaint_visibility_filter(query, current_user, db)
@@ -184,6 +188,19 @@ def list_complaints(
         query = query.filter(Complaint.status == status_filter)
     if priority_filter:
         query = query.filter(Complaint.priority == priority_filter)
+    if category_filter:
+        query = query.filter(Complaint.category_id == category_filter)
+    if zone_filter:
+        query = query.filter(Complaint.zone_id == zone_filter)
+    if search_filter:
+        from sqlalchemy import or_
+        pattern = f"%{search_filter}%"
+        query = query.filter(
+            or_(
+                Complaint.title.ilike(pattern),
+                Complaint.description.ilike(pattern),
+            )
+        )
 
     total = query.count()
     complaints = (

@@ -90,6 +90,8 @@ class ComplaintListItem(BaseModel):
     category_name: str | None = None
     department_name: str | None = None
     zone_name: str | None = None
+    ai_summary: str | None = None
+    assigned_admin: str | None = None
     created_at: datetime
     updated_at: datetime
     attachment_count: int = 0

@@ -60,6 +60,8 @@ export interface ComplaintListItem {
   category_name: string | null;
   department_name: string | null;
   zone_name: string | null;
+  ai_summary: string | null;
+  assigned_admin: string | null;
   created_at: string;
   updated_at: string;
   attachment_count: number;
@@ -232,4 +234,107 @@ export function aiStatusLabel(status: string | null): string {
 export function confidencePct(value: number | null): string {
   if (value == null) return "\u2014";
   return `${Math.round(value * 100)}%`;
+}
+
+// ── Admin Types ──────────────────────────────────────────────────────────────
+
+export interface AdminNotification {
+  id: string;
+  type: string;
+  message: string;
+  is_read: boolean;
+  complaint_id: string | null;
+  created_at: string;
+}
+
+export interface DuplicateCluster {
+  id: string;
+  summary: string | null;
+  member_count: number;
+  members: {
+    id: string;
+    title: string;
+    status: string;
+    priority: string | null;
+    created_at: string;
+  }[];
+}
+
+export interface DepartmentOption {
+  id: string;
+  name: string;
+}
+
+export interface AdminOption {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
+// ── Admin API Functions ──────────────────────────────────────────────────────
+
+export async function adminListComplaints(params?: {
+  page?: number;
+  per_page?: number;
+  status?: string;
+  priority?: string;
+  category?: string;
+  zone?: string;
+  search?: string;
+}): Promise<ComplaintListResponse> {
+  const query = new URLSearchParams();
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.per_page) query.set("per_page", String(params.per_page));
+  if (params?.status) query.set("status", params.status);
+  if (params?.priority) query.set("priority", params.priority);
+  if (params?.category) query.set("category", params.category);
+  if (params?.zone) query.set("zone", params.zone);
+  if (params?.search) query.set("search", params.search);
+  const qs = query.toString();
+  return api.get<ComplaintListResponse>(`/admin/complaints${qs ? `?${qs}` : ""}`);
+}
+
+export async function adminGetComplaint(id: string): Promise<ComplaintDetail> {
+  return api.get<ComplaintDetail>(`/admin/complaints/${id}`);
+}
+
+export async function adminUpdateComplaint(
+  id: string,
+  body: {
+    category_id?: string | null;
+    priority?: string | null;
+    department_id?: string | null;
+    status?: string | null;
+    note?: string | null;
+    response?: string | null;
+    assign_to_user_id?: string | null;
+  }
+): Promise<{ data: { id: string; status: string; priority: string | null } }> {
+  return api.patch(`/admin/complaints/${id}`, body);
+}
+
+export async function adminGetCluster(clusterId: string): Promise<DuplicateCluster> {
+  return api.get<DuplicateCluster>(`/admin/clusters/${clusterId}`);
+}
+
+export async function adminGetNotifications(unreadOnly = false): Promise<AdminNotification[]> {
+  const qs = unreadOnly ? "?unread_only=true" : "";
+  return api.get<AdminNotification[]>(`/admin/notifications${qs}`);
+}
+
+export async function adminMarkNotificationRead(id: string): Promise<{ id: string; is_read: boolean }> {
+  return api.patch(`/admin/notifications/${id}/read`);
+}
+
+export async function adminMarkAllNotificationsRead(): Promise<{ marked_read: number }> {
+  return api.post(`/admin/notifications/read-all`);
+}
+
+export async function adminGetDepartments(): Promise<DepartmentOption[]> {
+  return api.get<DepartmentOption[]>("/admin/departments");
+}
+
+export async function adminGetAdmins(): Promise<AdminOption[]> {
+  return api.get<AdminOption[]>("/admin/admins");
 }

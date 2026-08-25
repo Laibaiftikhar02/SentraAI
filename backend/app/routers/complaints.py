@@ -26,6 +26,7 @@ from app.schemas.complaint import (
 from app.services import complaint_service
 from app.services.ai_processing import process_complaint_ai
 from app.utils.file_storage import get_file_path
+from app.models.notification import Notification
 
 router = APIRouter(prefix="/api/v1", tags=["complaints"])
 
@@ -93,6 +94,11 @@ def list_complaints(
                 category_name=c.category.name if c.category else None,
                 department_name=c.department.name if c.department else None,
                 zone_name=c.zone.name if c.zone else None,
+                ai_summary=(
+                    c.ai_prediction.summary[:120] + "..."
+                    if c.ai_prediction and c.ai_prediction.summary and len(c.ai_prediction.summary) > 120
+                    else (c.ai_prediction.summary if c.ai_prediction else None)
+                ),
                 created_at=c.created_at,
                 updated_at=c.updated_at,
                 attachment_count=len(c.attachments),
@@ -314,4 +320,72 @@ def download_attachment(
     )
 
 
+# ── GET /notifications ─────────────────────────────────────────────────────
+
+@router.get("/notifications")
+def get_notifications(
+    unread_only: bool = False,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return notifications for the authenticated user."""
+    query = db.query(Notification).filter(
+        Notification.user_id == current_user.user_id
+    )
+    if unread_only:
+        query = query.filter(Notification.is_read.is_(False))
+    notifs = query.order_by(Notification.created_at.desc()).limit(50).all()
+    return [
+        {
+            "id": str(n.id),
+            "type": n.type,
+            "message": n.message,
+            "is_read": n.is_read,
+            "complaint_id": str(n.complaint_id) if n.complaint_id else None,
+            "created_at": n.created_at.isoformat(),
+        }
+        for n in notifs
+    ]
+
+
+@router.patch("/notifications/{notification_id}/read")
+def mark_notification_read(
+    notification_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    notif = (
+        db.query(Notification)
+        .filter(
+            Notification.id == notification_id,
+            Notification.user_id == current_user.user_id,
+        )
+        .first()
+    )
+    if not notif:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found.",
+        )
+    notif.is_read = True
+    db.commit()
+    db.refresh(notif)
+    return {"id": str(notif.id), "is_read": notif.is_read}
+
+
+@router.post("/notifications/read-all")
+def mark_all_notifications_read(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    count = (
+        db.query(Notification)
+        .filter(
+            Notification.user_id == current_user.user_id,
+            Notification.is_read.is_(False),
+        )
+        .update({"is_read": True})
+    )
+    db.commit()
+    return {"marked_read": count}
 
