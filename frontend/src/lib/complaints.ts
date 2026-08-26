@@ -344,3 +344,49 @@ export async function adminGetDepartments(): Promise<DepartmentOption[]> {
 export async function adminGetAdmins(): Promise<AdminOption[]> {
   return api.get<AdminOption[]>("/admin/admins");
 }
+
+// ── Heatmap Types ─────────────────────────────────────────────────────────────
+
+export interface HeatmapZone {
+  zoneId: string;
+  zoneName: string;
+  zoneType: string | null;
+  totalReports: number;
+  distinctIssueClusters: number;
+  urgencyDistribution: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+  heatIntensity: number;
+  polygon: number[][] | null;
+  centroid: number[];
+}
+
+export interface HeatmapMarker {
+  markerId: string;
+  markerType: "complaint" | "duplicate_cluster";
+  zoneId: string;
+  urgency: string;
+  reportCount: number;
+  clusterId?: string;
+  complaintId?: string;
+  complaintIds: string[];
+  summary: string | null;
+  category: string | null;
+  department: string | null;
+  confidence: number | null;
+  position: number[];
+}
+
+export interface HeatmapResponse {
+  zones: HeatmapZone[];
+  markers: HeatmapMarker[];
+}
+
+// ── Heatmap API Function ────────────────────────────────────────────────────
+
+export async function getHeatmapData(): Promise<HeatmapResponse> {
+  return api.get<HeatmapResponse>("/analytics/heatmap");
+}

@@ -225,9 +225,12 @@ export default function AdminDashboard() {
         </div>
         <div className="glass-panel p-6">
           <h2 className="text-lg font-semibold mb-3">Campus Heatmap</h2>
-          <p className="text-gray-500 text-sm">
-            Heatmap visualization will appear in Phase 5.
+          <p className="text-gray-500 text-sm mb-4">
+            Interactive campus map showing issue concentration and urgency markers across all zones.
           </p>
+          <Link href="/admin/heatmap" className="btn-primary text-sm">
+            Open Heatmap
+          </Link>
         </div>
       </div>
     </div>
