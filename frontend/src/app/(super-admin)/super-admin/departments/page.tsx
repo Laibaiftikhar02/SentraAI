@@ -36,8 +36,10 @@ export default function DepartmentManagement() {
         setUser(u);
         loadDepartments();
       })
-      .catch(() => {
-        clearToken();
+      .catch((err) => {
+        if (err instanceof Error && err.message === "Unauthorized") {
+          clearToken();
+        }
         router.replace("/login");
       })
       .finally(() => setLoading(false));

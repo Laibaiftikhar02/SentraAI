@@ -4,6 +4,9 @@ interface ApiOptions extends RequestInit {
   auth?: boolean;
 }
 
+// Guard flag to prevent multiple concurrent 401 redirects
+let isRedirectingTo401 = false;
+
 class ApiClient {
   private getToken(): string | null {
     if (typeof window === "undefined") return null;
@@ -18,10 +21,12 @@ class ApiClient {
       ...(customHeaders as Record<string, string>),
     };
 
+    // Save the token used for this request so we can detect replacements
+    let requestToken: string | null = null;
     if (auth) {
-      const token = this.getToken();
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
+      requestToken = this.getToken();
+      if (requestToken) {
+        headers["Authorization"] = `Bearer ${requestToken}`;
       }
     }
 
@@ -31,9 +36,21 @@ class ApiClient {
     });
 
     if (response.status === 401) {
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("sentraai_token");
-        window.location.href = "/session-expired";
+      // Only auto-redirect if:
+      //  1. This request actually carried a token (real session expiry)
+      //  2. No other request is already handling the redirect
+      //  3. The token has NOT been replaced by a fresh login while
+      //     this request was in flight
+      if (requestToken && typeof window !== "undefined" && !isRedirectingTo401) {
+        const currentToken = localStorage.getItem("sentraai_token");
+        if (currentToken === requestToken) {
+          isRedirectingTo401 = true;
+          localStorage.removeItem("sentraai_token");
+          window.location.href = "/session-expired";
+          // Reset guard after navigation has time to fire
+          setTimeout(() => { isRedirectingTo401 = false; }, 3000);
+        }
+        // else: token was replaced by a fresh login — do NOT redirect
       }
       throw new Error("Unauthorized");
     }

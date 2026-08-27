@@ -102,8 +102,10 @@ export default function CampusHeatmap() {
           })
           .catch((err) => setError(err.message || "Failed to load heatmap"));
       })
-      .catch(() => {
-        clearToken();
+      .catch((err) => {
+        if (err instanceof Error && err.message === "Unauthorized") {
+          clearToken();
+        }
         router.replace("/login");
       })
       .finally(() => setLoading(false));

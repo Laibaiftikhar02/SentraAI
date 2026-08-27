@@ -53,3 +53,16 @@ body {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 3px;
 }
+
+/* Chatbot styles */
+@layer components {
+  .chat-bubble-bot {
+    @apply bg-glass-light border border-glass-border rounded-2xl text-gray-200;
+  }
+  .chat-bubble-user {
+    @apply bg-blue-600/20 border border-blue-500/30 rounded-2xl text-white;
+  }
+  .chat-preview-card {
+    @apply bg-navy-700/80 border border-blue-500/30 rounded-xl;
+  }
+}

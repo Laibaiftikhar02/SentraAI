@@ -31,8 +31,10 @@ export default function ComplaintsListPage() {
         }
         setUser(u);
       })
-      .catch(() => {
-        clearToken();
+      .catch((err) => {
+        if (err instanceof Error && err.message === "Unauthorized") {
+          clearToken();
+        }
         router.replace("/login");
       })
       .finally(() => setLoading(false));

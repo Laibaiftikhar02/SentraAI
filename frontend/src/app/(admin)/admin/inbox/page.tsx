@@ -95,8 +95,10 @@ function AdminInboxContent() {
         getCategories().then(setCategories).catch(() => {});
         getZones().then(setZones).catch(() => {});
       })
-      .catch(() => {
-        clearToken();
+      .catch((err) => {
+        if (err instanceof Error && err.message === "Unauthorized") {
+          clearToken();
+        }
         router.replace("/login");
       })
       .finally(() => setLoading(false));

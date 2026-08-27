@@ -33,8 +33,10 @@ export default function OrgSettingsPage() {
         setUser(u);
         loadSettings();
       })
-      .catch(() => {
-        clearToken();
+      .catch((err) => {
+        if (err instanceof Error && err.message === "Unauthorized") {
+          clearToken();
+        }
         router.replace("/login");
       })
       .finally(() => setLoading(false));

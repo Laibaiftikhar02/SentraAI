@@ -44,8 +44,11 @@ export default function AdminDashboard() {
             .catch(() => {}),
         ]);
       })
-      .catch(() => {
-        clearToken();
+      .catch((err) => {
+        // Only clear token on real auth failures, not network/server errors
+        if (err instanceof Error && err.message === "Unauthorized") {
+          clearToken();
+        }
         router.replace("/login");
       })
       .finally(() => setLoading(false));

@@ -3,7 +3,7 @@
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { login, decodeTokenPayload, getDashboardPath } from "@/lib/auth";
+import { login, decodeTokenPayload, getDashboardPath, clearToken } from "@/lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,6 +17,8 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
+      // Clear any stale token before fresh login
+      clearToken();
       const token = await login(email, password);
       const payload = decodeTokenPayload(token);
       if (payload) {

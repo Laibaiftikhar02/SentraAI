@@ -38,8 +38,10 @@ export default function UserDashboard() {
             .catch(() => {}),
         ]);
       })
-      .catch(() => {
-        clearToken();
+      .catch((err) => {
+        if (err instanceof Error && err.message === "Unauthorized") {
+          clearToken();
+        }
         router.replace("/login");
       })
       .finally(() => setLoading(false));
@@ -108,9 +110,12 @@ export default function UserDashboard() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Quick Actions</h2>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           <Link href="/dashboard/new-complaint" className="btn-primary">
             New Complaint
+          </Link>
+          <Link href="/dashboard/ai-chatbot" className="btn-secondary">
+            Report with AI
           </Link>
           <Link href="/dashboard/complaints" className="btn-secondary">
             My Complaints
