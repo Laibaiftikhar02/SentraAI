@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { fetchCurrentUser, clearToken, User } from "@/lib/auth";
 import {
@@ -37,6 +37,22 @@ const PRIORITY_OPTIONS = [
 ];
 
 export default function AdminInboxPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="glass-panel px-8 py-6">
+            <p className="text-gray-400">Loading inbox...</p>
+          </div>
+        </div>
+      }
+    >
+      <AdminInboxContent />
+    </Suspense>
+  );
+}
+
+function AdminInboxContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);

@@ -166,6 +166,9 @@ export default function AdminDashboard() {
           <Link href="/admin/heatmap" className="btn-secondary">
             Campus Heatmap
           </Link>
+          <Link href="/admin/analytics" className="btn-secondary">
+            Analytics
+          </Link>
         </div>
       </div>
 

@@ -390,3 +390,79 @@ export interface HeatmapResponse {
 export async function getHeatmapData(): Promise<HeatmapResponse> {
   return api.get<HeatmapResponse>("/analytics/heatmap");
 }
+
+// ── Phase 7: Analytics Types ─────────────────────────────────────────────────
+
+export interface ComplaintVolume {
+  total: number;
+  open: number;
+  resolved: number;
+  pending: number;
+  resolution_rate: number;
+  by_status: Record<string, number>;
+}
+
+export interface UrgencyDistribution {
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  unassigned: number;
+  total: number;
+}
+
+export interface CategoryDistributionItem {
+  category_name: string;
+  count: number;
+}
+
+export interface LocationStatsItem {
+  zone_name: string;
+  zone_type: string | null;
+  total_reports: number;
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+}
+
+export interface DuplicateStatsItem {
+  cluster_id: string;
+  summary: string | null;
+  member_count: number;
+  highest_priority: string | null;
+}
+
+export interface DepartmentPerformanceItem {
+  department_name: string;
+  total: number;
+  resolved: number;
+  open: number;
+  resolution_rate: number;
+}
+
+// ── Phase 7: Analytics API Functions ─────────────────────────────────────────
+
+export async function getAnalyticsComplaints(): Promise<ComplaintVolume> {
+  return api.get<ComplaintVolume>("/analytics/complaints");
+}
+
+export async function getAnalyticsUrgency(): Promise<UrgencyDistribution> {
+  return api.get<UrgencyDistribution>("/analytics/urgency");
+}
+
+export async function getAnalyticsCategories(): Promise<CategoryDistributionItem[]> {
+  return api.get<CategoryDistributionItem[]>("/analytics/categories");
+}
+
+export async function getAnalyticsLocations(): Promise<LocationStatsItem[]> {
+  return api.get<LocationStatsItem[]>("/analytics/locations");
+}
+
+export async function getAnalyticsDuplicates(): Promise<DuplicateStatsItem[]> {
+  return api.get<DuplicateStatsItem[]>("/analytics/duplicates");
+}
+
+export async function getAnalyticsDepartments(): Promise<DepartmentPerformanceItem[]> {
+  return api.get<DepartmentPerformanceItem[]>("/analytics/departments");
+}

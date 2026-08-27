@@ -33,9 +33,21 @@ class ApiClient {
     if (response.status === 401) {
       if (typeof window !== "undefined") {
         localStorage.removeItem("sentraai_token");
-        window.location.href = "/login";
+        window.location.href = "/session-expired";
       }
       throw new Error("Unauthorized");
+    }
+
+    if (response.status === 403) {
+      throw new Error("Forbidden");
+    }
+
+    if (response.status === 404) {
+      throw new Error("Not Found");
+    }
+
+    if (response.status >= 500) {
+      throw new Error("Server Error");
     }
 
     if (!response.ok) {
