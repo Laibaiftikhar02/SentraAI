@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { clearToken } from "@/lib/auth";
 
 export default function NotFound() {
   return (

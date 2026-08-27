@@ -288,7 +288,8 @@ def _authorize_complaint_access(
             )
     elif current_user.role == "admin":
         dept_ids = _get_admin_department_ids(db, current_user.user_id)
-        if complaint.department_id not in dept_ids:
+        # Admins can see their department complaints + General Review (null dept)
+        if complaint.department_id is not None and complaint.department_id not in dept_ids:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have access to this complaint.",
