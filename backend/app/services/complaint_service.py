@@ -11,6 +11,7 @@ Key rules (from PMD v2.2 / API Contract / DB Design):
 
 from __future__ import annotations
 
+import asyncio
 from uuid import UUID
 
 from fastapi import HTTPException, status, UploadFile
@@ -156,7 +157,11 @@ async def create_complaint(
     db.refresh(complaint)
 
     # ── Phase 3: AI triage (runs after complaint is safely persisted) ──
-    process_complaint_ai(db, complaint)
+    # The AI pipeline (and any real LLM call inside it) is synchronous; run
+    # it in a worker thread so a slow Gemini call cannot block the event
+    # loop.  The request-scoped session is handed off sequentially — no
+    # other coroutine touches it while the thread runs.
+    await asyncio.to_thread(process_complaint_ai, db, complaint)
     db.refresh(complaint)
 
     return complaint

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { AppShell } from "@/components/layout/AppShell";
 import { fetchCurrentUser, clearToken, User } from "@/lib/auth";
 import {
   listComplaints,
@@ -21,6 +22,7 @@ export default function ComplaintsListPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [fetching, setFetching] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCurrentUser()
@@ -43,57 +45,54 @@ export default function ComplaintsListPage() {
   useEffect(() => {
     if (!user) return;
     setFetching(true);
+    setListError(null);
     listComplaints({ page, per_page: 20 })
       .then((res) => {
         setComplaints(res.items);
         setTotal(res.total);
       })
-      .catch(() => {})
+      .catch((err) =>
+        setListError(err instanceof Error ? err.message : "Failed to load complaints")
+      )
       .finally(() => setFetching(false));
   }, [user, page]);
-
-  function handleLogout() {
-    clearToken();
-    router.replace("/login");
-  }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="glass-panel px-8 py-6">
-          <p className="text-gray-400">Loading...</p>
+        <div className="glass-panel-glow px-10 py-8 text-center">
+          <div className="w-8 h-8 border-2 border-accent-violet/30 border-t-accent-violet rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-400 text-sm">Loading...</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen p-6">
-      <header className="flex items-center justify-between mb-8">
-        <div>
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="text-gray-400 hover:text-white text-sm mb-2 transition-colors"
-          >
-            &larr; Back to Dashboard
-          </button>
-          <h1 className="text-2xl font-bold">My Complaints</h1>
-          <p className="text-gray-400 text-sm">
-            {total} complaint{total !== 1 ? "s" : ""} submitted
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/new-complaint" className="btn-primary text-sm">
-            New Complaint
-          </Link>
-          <span className="text-gray-400 text-sm">{user?.name}</span>
-          <button onClick={handleLogout} className="btn-secondary text-sm">
-            Logout
-          </button>
-        </div>
-      </header>
+  const totalPages = Math.ceil(total / 20);
 
-      {complaints.length === 0 ? (
+  return (
+    <AppShell
+      user={user}
+      role="user"
+      title="My Complaints"
+      subtitle={`${total} complaint${total !== 1 ? "s" : ""} submitted`}
+      actions={
+        <Link href="/dashboard/new-complaint" className="btn-primary text-sm">
+          New Complaint
+        </Link>
+      }
+    >
+      {listError ? (
+        <div className="glass-panel p-8 text-center">
+          <p className="text-red-400 mb-4">{listError}</p>
+          <button
+            onClick={() => setPage(page)}
+            className="btn-secondary text-sm"
+          >
+            Retry
+          </button>
+        </div>
+      ) : complaints.length === 0 ? (
         <div className="glass-panel p-8 text-center">
           <p className="text-gray-400 mb-4">
             No complaints found. Submit your first complaint to get started.
@@ -135,9 +134,7 @@ export default function ComplaintsListPage() {
                 <tr
                   key={c.id}
                   className="border-b border-glass-border/50 hover:bg-glass-light/30 transition-colors cursor-pointer"
-                  onClick={() =>
-                    router.push(`/dashboard/complaints/${c.id}`)
-                  }
+                  onClick={() => router.push(`/dashboard/complaints/${c.id}`)}
                 >
                   <td className="px-4 py-3">
                     <span className="font-medium text-white">{c.title}</span>
@@ -154,7 +151,9 @@ export default function ComplaintsListPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`text-sm font-medium ${priorityColor(c.priority)}`}
+                      className={`text-sm font-medium ${priorityColor(
+                        c.priority
+                      )}`}
                     >
                       {c.priority
                         ? c.priority.charAt(0).toUpperCase() +
@@ -176,7 +175,7 @@ export default function ComplaintsListPage() {
                     ) : c.ai_status === "unavailable" ? (
                       <span className="text-red-400 text-xs">&#10007;</span>
                     ) : (
-                      <span className="text-gray-600 text-xs">\u2014</span>
+                      <span className="text-gray-600 text-xs">{"\u2014"}</span>
                     )}
                   </td>
                 </tr>
@@ -184,8 +183,7 @@ export default function ComplaintsListPage() {
             </tbody>
           </table>
 
-          {/* Pagination */}
-          {total > 20 && (
+          {totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-glass-border">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -195,15 +193,13 @@ export default function ComplaintsListPage() {
                 Previous
               </button>
               <span className="text-gray-400 text-sm">
-                Page {page} of {Math.ceil(total / 20)}
+                Page {page} of {totalPages}
               </span>
               <button
                 onClick={() =>
-                  setPage((p) =>
-                    p < Math.ceil(total / 20) ? p + 1 : p
-                  )
+                  setPage((p) => (p < totalPages ? p + 1 : p))
                 }
-                disabled={page >= Math.ceil(total / 20)}
+                disabled={page >= totalPages}
                 className="btn-secondary text-sm disabled:opacity-50"
               >
                 Next
@@ -212,6 +208,6 @@ export default function ComplaintsListPage() {
           )}
         </div>
       )}
-    </div>
+    </AppShell>
   );
 }

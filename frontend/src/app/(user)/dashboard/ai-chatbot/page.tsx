@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { AppShell } from "@/components/layout/AppShell";
 import { fetchCurrentUser, clearToken, User } from "@/lib/auth";
 import { submitComplaint } from "@/lib/complaints";
 import {
@@ -19,14 +20,20 @@ import {
   CHATBOT_NAME,
 } from "@/lib/chatbot-config";
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
-type Phase = "loading" | "conversing" | "preview" | "editing" | "submitting" | "success" | "error";
-
-// ── Speech Recognition types ────────────────────────────────────────────────
+type Phase =
+  | "loading"
+  | "conversing"
+  | "preview"
+  | "editing"
+  | "submitting"
+  | "success"
+  | "error";
 
 interface SpeechRecognitionEvent {
-  results: { [index: number]: { [index: number]: { transcript: string } }; length: number };
+  results: {
+    [index: number]: { [index: number]: { transcript: string } };
+    length: number;
+  };
 }
 
 interface SpeechRecognitionInstance {
@@ -47,46 +54,39 @@ declare global {
   }
 }
 
-// ── Main Component ──────────────────────────────────────────────────────────
-
 export default function AIChatbotPage() {
   const router = useRouter();
 
-  // Auth state
   const [user, setUser] = useState<User | null>(null);
 
-  // Conversation state
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [extractedFields, setExtractedFields] = useState<ExtractedFields>({
-    title: null, description: null,
-    category_id: null, category_name: null,
-    zone_id: null, zone_name: null,
+    title: null,
+    description: null,
+    category_id: null,
+    category_name: null,
+    zone_id: null,
+    zone_name: null,
   });
   const [suggestions, setSuggestions] = useState<string[]>([]);
 
-  // UI state
   const [phase, setPhase] = useState<Phase>("loading");
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submittedId, setSubmittedId] = useState<string | null>(null);
 
-  // Voice state
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
-  // Scroll ref
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
-
-  // ── Auth check ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
     fetchCurrentUser()
@@ -96,7 +96,6 @@ export default function AIChatbotPage() {
           return;
         }
         setUser(u);
-        // Initialize chatbot with greeting
         setMessages([{ role: "bot", content: CHATBOT_GREETING }]);
         setPhase("conversing");
       })
@@ -108,8 +107,6 @@ export default function AIChatbotPage() {
       });
   }, [router]);
 
-  // ── Speech recognition setup ────────────────────────────────────────────────
-
   useEffect(() => {
     const SpeechRecognition =
       typeof window !== "undefined"
@@ -118,7 +115,7 @@ export default function AIChatbotPage() {
     if (SpeechRecognition) {
       setSpeechSupported(true);
       const recognition = new SpeechRecognition();
-      recognition.lang = "ur-PK"; // Handles Roman Urdu well
+      recognition.lang = "ur-PK";
       recognition.continuous = false;
       recognition.interimResults = false;
       recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -131,13 +128,14 @@ export default function AIChatbotPage() {
     }
   }, []);
 
-  // ── Send message ────────────────────────────────────────────────────────────
-
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim()) return;
 
-      const userMsg: ConversationMessage = { role: "user", content: text.trim() };
+      const userMsg: ConversationMessage = {
+        role: "user",
+        content: text.trim(),
+      };
       const updatedMessages = [...messages, userMsg];
       setMessages(updatedMessages);
       setInput("");
@@ -151,7 +149,10 @@ export default function AIChatbotPage() {
           extractedFields as unknown as Record<string, unknown>
         );
 
-        const botMsg: ConversationMessage = { role: "bot", content: response.bot_message };
+        const botMsg: ConversationMessage = {
+          role: "bot",
+          content: response.bot_message,
+        };
         setMessages([...updatedMessages, botMsg]);
         setExtractedFields(response.fields);
         setSuggestions(response.suggestions || []);
@@ -171,8 +172,6 @@ export default function AIChatbotPage() {
     },
     [messages, extractedFields]
   );
-
-  // ── Submit complaint ────────────────────────────────────────────────────────
 
   const handleSubmit = async () => {
     if (!extractedFields.title || !extractedFields.description) return;
@@ -195,14 +194,15 @@ export default function AIChatbotPage() {
     }
   };
 
-  // ── Restart conversation ────────────────────────────────────────────────────
-
   const handleRestart = () => {
     setMessages([{ role: "bot", content: CHATBOT_GREETING }]);
     setExtractedFields({
-      title: null, description: null,
-      category_id: null, category_name: null,
-      zone_id: null, zone_name: null,
+      title: null,
+      description: null,
+      category_id: null,
+      category_name: null,
+      zone_id: null,
+      zone_name: null,
     });
     setSuggestions([]);
     setPhase("conversing");
@@ -210,8 +210,6 @@ export default function AIChatbotPage() {
     setSubmitError(null);
     setSubmittedId(null);
   };
-
-  // ── Voice toggle ────────────────────────────────────────────────────────────
 
   const toggleVoice = () => {
     if (!recognitionRef.current) return;
@@ -222,8 +220,6 @@ export default function AIChatbotPage() {
       setIsListening(true);
     }
   };
-
-  // ── Handle suggestion click ─────────────────────────────────────────────────
 
   const handleSuggestion = (text: string) => {
     if (text === "Confirm & Submit") {
@@ -237,16 +233,12 @@ export default function AIChatbotPage() {
     }
   };
 
-  // ── Handle form submit ──────────────────────────────────────────────────────
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage(input);
     }
   };
-
-  // ── Render helpers ──────────────────────────────────────────────────────────
 
   function renderMessage(msg: ConversationMessage, idx: number) {
     const isBot = msg.role === "bot";
@@ -269,7 +261,7 @@ export default function AIChatbotPage() {
   function renderPreview() {
     return (
       <div className="chat-preview-card p-5 mb-4">
-        <h3 className="text-sm font-semibold text-blue-400 mb-3">
+        <h3 className="text-sm font-semibold text-accent-purple mb-3">
           Issue Preview
         </h3>
         <div className="space-y-2 text-sm">
@@ -303,7 +295,10 @@ export default function AIChatbotPage() {
           )}
         </div>
         <div className="flex gap-3 mt-4">
-          <button onClick={handleSubmit} className="btn-primary text-sm !py-2 !px-4">
+          <button
+            onClick={handleSubmit}
+            className="btn-primary text-sm !py-2 !px-4"
+          >
             Confirm &amp; Submit
           </button>
           <button
@@ -326,7 +321,7 @@ export default function AIChatbotPage() {
   function renderEditForm() {
     return (
       <div className="chat-preview-card p-5 mb-4">
-        <h3 className="text-sm font-semibold text-blue-400 mb-3">
+        <h3 className="text-sm font-semibold text-accent-purple mb-3">
           Edit Issue Details
         </h3>
         <div className="space-y-3">
@@ -342,24 +337,35 @@ export default function AIChatbotPage() {
             />
           </div>
           <div>
-            <label className="text-gray-400 text-xs block mb-1">Description</label>
+            <label className="text-gray-400 text-xs block mb-1">
+              Description
+            </label>
             <textarea
               className="glass-input w-full text-sm min-h-[80px]"
               value={extractedFields.description || ""}
               onChange={(e) =>
-                setExtractedFields((f) => ({ ...f, description: e.target.value }))
+                setExtractedFields((f) => ({
+                  ...f,
+                  description: e.target.value,
+                }))
               }
             />
           </div>
           {extractedFields.category_name && (
             <div>
-              <label className="text-gray-400 text-xs block mb-1">Category</label>
-              <p className="text-white text-sm">{extractedFields.category_name}</p>
+              <label className="text-gray-400 text-xs block mb-1">
+                Category
+              </label>
+              <p className="text-white text-sm">
+                {extractedFields.category_name}
+              </p>
             </div>
           )}
           {extractedFields.zone_name && (
             <div>
-              <label className="text-gray-400 text-xs block mb-1">Location</label>
+              <label className="text-gray-400 text-xs block mb-1">
+                Location
+              </label>
               <p className="text-white text-sm">{extractedFields.zone_name}</p>
             </div>
           )}
@@ -387,7 +393,9 @@ export default function AIChatbotPage() {
       <div className="glass-panel p-6 text-center">
         <div className="text-green-400 text-4xl mb-3">&#10003;</div>
         <h3 className="text-lg font-semibold mb-2">Issue Submitted!</h3>
-        <p className="text-gray-400 text-sm mb-4">{SUBMISSION_SUCCESS_MESSAGE}</p>
+        <p className="text-gray-400 text-sm mb-4">
+          {SUBMISSION_SUCCESS_MESSAGE}
+        </p>
         <div className="flex gap-3 justify-center">
           {submittedId && (
             <Link
@@ -413,7 +421,10 @@ export default function AIChatbotPage() {
         <p className="text-gray-400 text-sm mb-4">{submitError}</p>
         <div className="flex gap-3 justify-center">
           <button
-            onClick={() => { setPhase("preview"); setSubmitError(null); }}
+            onClick={() => {
+              setPhase("preview");
+              setSubmitError(null);
+            }}
             className="btn-primary text-sm"
           >
             Retry
@@ -429,50 +440,41 @@ export default function AIChatbotPage() {
     );
   }
 
-  // ── Loading state ───────────────────────────────────────────────────────────
-
   if (phase === "loading") {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="glass-panel px-8 py-6">
-          <p className="text-gray-400">Loading...</p>
+        <div className="glass-panel-glow px-10 py-8 text-center">
+          <div className="w-8 h-8 border-2 border-accent-violet/30 border-t-accent-violet rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-400 text-sm">Loading...</p>
         </div>
       </div>
     );
   }
 
-  // ── Main render ─────────────────────────────────────────────────────────────
-
   return (
-    <div className="min-h-screen p-6 flex flex-col">
-      {/* Header */}
-      <header className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-2xl font-bold">AI Reporting Assistant</h1>
-          <p className="text-gray-400 text-sm">
-            Report your issue through natural conversation
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {(phase === "conversing" || phase === "preview" || phase === "editing") && (
-            <button onClick={handleRestart} className="btn-secondary text-sm !py-1.5 !px-3">
-              Restart
-            </button>
-          )}
-          <Link href="/dashboard" className="btn-secondary text-sm !py-1.5 !px-3">
-            Dashboard
-          </Link>
-        </div>
-      </header>
-
-      {/* Success / Error states */}
+    <AppShell
+      user={user}
+      role="user"
+      title="AI Reporting Assistant"
+      subtitle="Report your issue through natural conversation"
+      actions={
+        (phase === "conversing" ||
+          phase === "preview" ||
+          phase === "editing") && (
+          <button
+            onClick={handleRestart}
+            className="btn-secondary text-sm !py-1.5 !px-3"
+          >
+            Restart
+          </button>
+        )
+      }
+    >
       {phase === "success" && renderSuccess()}
       {phase === "error" && renderError()}
 
-      {/* Conversation + Input area */}
       {phase !== "success" && phase !== "error" && (
-        <div className="glass-panel flex-1 flex flex-col min-h-0">
-          {/* Conversation area */}
+        <div className="glass-panel flex flex-col" style={{ height: "calc(100vh - 180px)" }}>
           <div
             ref={scrollRef}
             className="flex-1 overflow-y-auto p-4 space-y-1"
@@ -482,29 +484,44 @@ export default function AIChatbotPage() {
               <div className="flex justify-start mb-3">
                 <div className="chat-bubble-bot px-4 py-3 rounded-2xl text-sm">
                   <span className="inline-flex gap-1">
-                    <span className="animate-bounce" style={{ animationDelay: "0ms" }}>.</span>
-                    <span className="animate-bounce" style={{ animationDelay: "150ms" }}>.</span>
-                    <span className="animate-bounce" style={{ animationDelay: "300ms" }}>.</span>
+                    <span
+                      className="animate-bounce"
+                      style={{ animationDelay: "0ms" }}
+                    >
+                      .
+                    </span>
+                    <span
+                      className="animate-bounce"
+                      style={{ animationDelay: "150ms" }}
+                    >
+                      .
+                    </span>
+                    <span
+                      className="animate-bounce"
+                      style={{ animationDelay: "300ms" }}
+                    >
+                      .
+                    </span>
                   </span>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Preview / Edit overlay */}
           {(phase === "preview" || phase === "editing" || phase === "submitting") && (
             <div className="px-4 pb-2">
               {phase === "preview" && renderPreview()}
               {phase === "editing" && renderEditForm()}
               {phase === "submitting" && (
                 <div className="chat-preview-card p-4 text-center">
-                  <p className="text-gray-400 text-sm">Submitting your issue...</p>
+                  <p className="text-gray-400 text-sm">
+                    Submitting your issue...
+                  </p>
                 </div>
               )}
             </div>
           )}
 
-          {/* Suggestions */}
           {suggestions.length > 0 && phase === "conversing" && (
             <div className="px-4 pb-2 flex flex-wrap gap-2">
               {suggestions.map((s, i) => (
@@ -515,9 +532,7 @@ export default function AIChatbotPage() {
                       ? setInput(s.replace("...", ""))
                       : sendMessage(s)
                   }
-                  className="text-xs px-3 py-1.5 rounded-full border border-glass-border
-                             bg-glass hover:bg-glass-light text-gray-300 hover:text-white
-                             transition-all duration-200"
+                  className="text-xs px-3 py-1.5 rounded-full border border-glass-border bg-glass hover:bg-glass-light text-gray-300 hover:text-white transition-all duration-200"
                 >
                   {s}
                 </button>
@@ -525,7 +540,6 @@ export default function AIChatbotPage() {
             </div>
           )}
 
-          {/* Input area */}
           {(phase === "conversing" || phase === "preview" || phase === "editing") && (
             <div className="chat-input-area p-4 border-t border-glass-border">
               <div className="flex items-center gap-2">
@@ -545,20 +559,29 @@ export default function AIChatbotPage() {
                 {speechSupported && phase === "conversing" && (
                   <button
                     onClick={toggleVoice}
-                    className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center
-                               transition-all duration-200 ${
-                                 isListening
-                                   ? "bg-red-600 text-white animate-pulse"
-                                   : "bg-glass border border-glass-border text-gray-400 hover:text-white"
-                               }`}
+                    className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                      isListening
+                        ? "bg-red-600 text-white animate-pulse"
+                        : "bg-glass border border-glass-border text-gray-400 hover:text-white"
+                    }`}
                     title={isListening ? "Stop recording" : "Start voice input"}
                   >
                     {isListening ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-5 h-5"
+                      >
                         <path d="M6 6h12v12H6z" />
                       </svg>
                     ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-5 h-5"
+                      >
                         <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
                         <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
                       </svg>
@@ -577,6 +600,6 @@ export default function AIChatbotPage() {
           )}
         </div>
       )}
-    </div>
+    </AppShell>
   );
 }

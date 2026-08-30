@@ -15,12 +15,17 @@ class Settings(BaseSettings):
     backend_port: int = 8000
     frontend_url: str = "http://localhost:3000"
 
-    # AI provider (Phase 3)
-    ai_provider: str = "mock"
-    ai_api_key: str = ""
-    ai_model: str = ""
+    # AI provider — complaint-triage engine
+    # "gemini" → Gemini LLM triage with automatic local fallback (primary)
+    # "local" / "mock" → rule-based provider only
+    ai_provider: str = "gemini"
+    ai_api_key: str = ""  # legacy — prefer GEMINI_API_KEY below
+    ai_model: str = "gemini-3.6-flash"
+    ai_timeout_seconds: float = 20
+    ai_max_retries: int = 1
 
-    # Gemini API (chatbot LLM)
+    # Gemini API key — single credential shared by the reporting chatbot
+    # and the complaint-triage provider. Backend-only secret.
     gemini_api_key: str = ""
 
     # File uploads (local MVP storage)

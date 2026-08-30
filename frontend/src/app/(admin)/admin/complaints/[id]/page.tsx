@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import { AppShell } from "@/components/layout/AppShell";
 import { fetchCurrentUser, clearToken, User } from "@/lib/auth";
 import {
   adminGetComplaint,
@@ -12,6 +13,7 @@ import {
   getCategories,
   adminGetDepartments,
   adminGetAdmins,
+  downloadAttachment,
   ComplaintDetail,
   HistoryEntry,
   DuplicateCluster,
@@ -26,7 +28,6 @@ import {
   confidencePct,
 } from "@/lib/complaints";
 
-// Valid status transitions (mirrors backend state machine)
 const VALID_TRANSITIONS: Record<string, string[]> = {
   created: ["assigned", "in_progress"],
   assigned: ["in_progress", "resolved"],
@@ -43,11 +44,9 @@ export default function AdminComplaintDetailPage() {
   const params = useParams();
   const complaintId = params.id as string;
 
-  // Auth
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Data
   const [complaint, setComplaint] = useState<ComplaintDetail | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [departments, setDepartments] = useState<DepartmentOption[]>([]);
@@ -55,7 +54,6 @@ export default function AdminComplaintDetailPage() {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [cluster, setCluster] = useState<DuplicateCluster | null>(null);
 
-  // Form state
   const [newStatus, setNewStatus] = useState("");
   const [newPriority, setNewPriority] = useState("");
   const [newCategoryId, setNewCategoryId] = useState("");
@@ -67,7 +65,6 @@ export default function AdminComplaintDetailPage() {
   const [saveMessage, setSaveMessage] = useState("");
   const [error, setError] = useState("");
 
-  // Auth check
   useEffect(() => {
     fetchCurrentUser()
       .then((u) => {
@@ -86,7 +83,6 @@ export default function AdminComplaintDetailPage() {
       .finally(() => setLoading(false));
   }, [router]);
 
-  // Load complaint + reference data
   const loadData = useCallback(async () => {
     if (!user || !complaintId) return;
     try {
@@ -103,13 +99,14 @@ export default function AdminComplaintDetailPage() {
       setAdmins(adminList);
       setCategories(cats);
 
-      // Pre-fill form with current values
       setNewPriority(c.priority || "");
       setNewCategoryId(c.category_id || "");
       setNewDepartmentId(c.department_id || "");
 
-      // Load duplicate cluster if detected
-      if (c.ai_prediction?.duplicate_detected && c.ai_prediction?.duplicate_cluster_id) {
+      if (
+        c.ai_prediction?.duplicate_detected &&
+        c.ai_prediction?.duplicate_cluster_id
+      ) {
         adminGetCluster(c.ai_prediction.duplicate_cluster_id)
           .then(setCluster)
           .catch(() => {});
@@ -123,12 +120,6 @@ export default function AdminComplaintDetailPage() {
     loadData();
   }, [loadData]);
 
-  function handleLogout() {
-    clearToken();
-    router.replace("/login");
-  }
-
-  // Build PATCH body from form — only send changed fields
   async function handleSave() {
     if (!complaint) return;
     setSaving(true);
@@ -137,9 +128,14 @@ export default function AdminComplaintDetailPage() {
     const body: Record<string, string> = {};
 
     if (newStatus) body.status = newStatus;
-    if (newPriority && newPriority !== complaint.priority) body.priority = newPriority;
-    if (newCategoryId && newCategoryId !== complaint.category_id) body.category_id = newCategoryId;
-    if (newDepartmentId && newDepartmentId !== (complaint.department_id || ""))
+    if (newPriority && newPriority !== complaint.priority)
+      body.priority = newPriority;
+    if (newCategoryId && newCategoryId !== complaint.category_id)
+      body.category_id = newCategoryId;
+    if (
+      newDepartmentId &&
+      newDepartmentId !== (complaint.department_id || "")
+    )
       body.department_id = newDepartmentId;
     if (assignToUserId) body.assign_to_user_id = assignToUserId;
     if (note.trim()) body.note = note.trim();
@@ -154,12 +150,10 @@ export default function AdminComplaintDetailPage() {
     try {
       await adminUpdateComplaint(complaintId, body);
       setSaveMessage("Changes saved successfully.");
-      // Clear transient fields after save
       setNewStatus("");
       setNote("");
       setResponse("");
       setAssignToUserId("");
-      // Reload data
       await loadData();
     } catch (err) {
       setSaveMessage(err instanceof Error ? err.message : "Update failed.");
@@ -168,18 +162,19 @@ export default function AdminComplaintDetailPage() {
     }
   }
 
-  // Quick action: accept AI suggestions
   async function handleAcceptAI() {
     if (!complaint?.ai_prediction) return;
     const ai = complaint.ai_prediction;
     const body: Record<string, string> = {};
 
-    if (ai.priority && ai.priority !== complaint.priority) body.priority = ai.priority;
+    if (ai.priority && ai.priority !== complaint.priority)
+      body.priority = ai.priority;
     if (ai.department) {
       const dept = departments.find(
         (d) => d.name.toLowerCase() === ai.department!.toLowerCase()
       );
-      if (dept && dept.id !== complaint.department_id) body.department_id = dept.id;
+      if (dept && dept.id !== complaint.department_id)
+        body.department_id = dept.id;
     }
     if (ai.category) {
       const cat = categories.find(
@@ -205,13 +200,12 @@ export default function AdminComplaintDetailPage() {
     }
   }
 
-  // ── Render states ──
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="glass-panel px-8 py-6">
-          <p className="text-gray-400">Loading...</p>
+        <div className="glass-panel-glow px-10 py-8 text-center">
+          <div className="w-8 h-8 border-2 border-accent-violet/30 border-t-accent-violet rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-400 text-sm">Loading...</p>
         </div>
       </div>
     );
@@ -238,51 +232,42 @@ export default function AdminComplaintDetailPage() {
   const allowedTransitions = VALID_TRANSITIONS[complaint.status] || [];
 
   return (
-    <div className="min-h-screen p-6">
-      {/* Header */}
-      <header className="flex items-center justify-between mb-6">
-        <div>
-          <button
-            onClick={() => router.push("/admin/inbox")}
-            className="text-gray-400 hover:text-white text-sm mb-2 transition-colors"
-          >
-            &larr; Back to Inbox
-          </button>
-          <h1 className="text-2xl font-bold">{complaint.title}</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            ID: {complaint.id.slice(0, 8)}... &bull; Submitted by{" "}
-            {complaint.submitter_name || "Unknown"}
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-gray-400 text-sm">{user?.name}</span>
-          <button onClick={handleLogout} className="btn-secondary text-sm">
-            Logout
-          </button>
-        </div>
-      </header>
-
+    <AppShell
+      user={user}
+      role="admin"
+      title={complaint.title}
+      subtitle={`ID: ${complaint.id.slice(0, 8)}... • Submitted by ${
+        complaint.submitter_name || "Unknown"
+      }`}
+      actions={
+        <Link href="/admin/inbox" className="btn-secondary text-sm">
+          Back to Inbox
+        </Link>
+      }
+    >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* ── Left column: Complaint details + Admin actions ── */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Status & Priority cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="glass-panel p-4">
-              <p className="text-gray-400 text-xs uppercase tracking-wide">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 stagger-children">
+            <div className="stat-card">
+              <p className="text-gray-500 text-[10px] uppercase tracking-wider">
                 Status
               </p>
               <p
-                className={`text-lg font-semibold mt-1 ${statusColor(complaint.status)}`}
+                className={`text-lg font-semibold mt-1 ${statusColor(
+                  complaint.status
+                )}`}
               >
                 {statusLabel(complaint.status)}
               </p>
             </div>
-            <div className="glass-panel p-4">
-              <p className="text-gray-400 text-xs uppercase tracking-wide">
+            <div className="stat-card">
+              <p className="text-gray-500 text-[10px] uppercase tracking-wider">
                 Priority
               </p>
               <p
-                className={`text-lg font-semibold mt-1 ${priorityColor(complaint.priority)}`}
+                className={`text-lg font-semibold mt-1 ${priorityColor(
+                  complaint.priority
+                )}`}
               >
                 {complaint.priority
                   ? complaint.priority.charAt(0).toUpperCase() +
@@ -290,16 +275,16 @@ export default function AdminComplaintDetailPage() {
                   : "Pending"}
               </p>
             </div>
-            <div className="glass-panel p-4">
-              <p className="text-gray-400 text-xs uppercase tracking-wide">
+            <div className="stat-card">
+              <p className="text-gray-500 text-[10px] uppercase tracking-wider">
                 Category
               </p>
               <p className="text-lg font-semibold mt-1">
                 {complaint.category_name || "Pending"}
               </p>
             </div>
-            <div className="glass-panel p-4">
-              <p className="text-gray-400 text-xs uppercase tracking-wide">
+            <div className="stat-card">
+              <p className="text-gray-500 text-[10px] uppercase tracking-wider">
                 Department
               </p>
               <p className="text-lg font-semibold mt-1">
@@ -308,7 +293,6 @@ export default function AdminComplaintDetailPage() {
             </div>
           </div>
 
-          {/* Description */}
           <div className="glass-panel p-6">
             <h2 className="text-lg font-semibold mb-3">Description</h2>
             <p className="text-gray-300 whitespace-pre-wrap leading-relaxed">
@@ -321,7 +305,6 @@ export default function AdminComplaintDetailPage() {
             )}
           </div>
 
-          {/* Attachments */}
           {complaint.attachments.length > 0 && (
             <div className="glass-panel p-6">
               <h2 className="text-lg font-semibold mb-3">
@@ -329,12 +312,17 @@ export default function AdminComplaintDetailPage() {
               </h2>
               <div className="space-y-2">
                 {complaint.attachments.map((a) => (
-                  <a
+                  <button
                     key={a.id}
-                    href={`/api/v1/complaints/${complaint.id}/attachments/${a.id}/download`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between glass-panel-light p-3 hover:bg-glass-light transition-colors"
+                    type="button"
+                    onClick={() =>
+                      downloadAttachment(
+                        complaint.id,
+                        a.id,
+                        a.original_filename
+                      ).catch(() => alert("Failed to download attachment."))
+                    }
+                    className="w-full flex items-center justify-between glass-panel-light p-3 hover:bg-glass-light transition-colors text-left"
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-blue-400 text-lg">&#128206;</span>
@@ -343,19 +331,18 @@ export default function AdminComplaintDetailPage() {
                           {a.original_filename}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {a.file_type} &bull;{" "}
-                          {(a.file_size / 1024).toFixed(1)} KB
+                          {a.file_type} &bull; {(a.file_size / 1024).toFixed(1)}{" "}
+                          KB
                         </p>
                       </div>
                     </div>
                     <span className="text-gray-400 text-sm">Download</span>
-                  </a>
+                  </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* ── Admin Actions Form ── */}
           <div className="glass-panel p-6">
             <h2 className="text-lg font-semibold mb-4">Admin Actions</h2>
 
@@ -366,8 +353,8 @@ export default function AdminComplaintDetailPage() {
                   saveMessage.includes("accepted")
                     ? "bg-green-500/10 text-green-400"
                     : saveMessage.includes("No changes")
-                      ? "bg-yellow-500/10 text-yellow-400"
-                      : "bg-red-500/10 text-red-400"
+                    ? "bg-yellow-500/10 text-yellow-400"
+                    : "bg-red-500/10 text-red-400"
                 }`}
               >
                 {saveMessage}
@@ -375,7 +362,6 @@ export default function AdminComplaintDetailPage() {
             )}
 
             <div className="space-y-4">
-              {/* Row 1: Status transition + Priority override */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-gray-400 text-xs uppercase tracking-wide block mb-1">
@@ -395,7 +381,8 @@ export default function AdminComplaintDetailPage() {
                   </select>
                   {allowedTransitions.length === 0 && (
                     <p className="text-xs text-gray-600 mt-1">
-                      No transitions available from &quot;{statusLabel(complaint.status)}&quot;
+                      No transitions available from &quot;
+                      {statusLabel(complaint.status)}&quot;
                     </p>
                   )}
                 </div>
@@ -427,7 +414,6 @@ export default function AdminComplaintDetailPage() {
                 </div>
               </div>
 
-              {/* Row 2: Category + Department override */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-gray-400 text-xs uppercase tracking-wide block mb-1">
@@ -465,7 +451,6 @@ export default function AdminComplaintDetailPage() {
                 </div>
               </div>
 
-              {/* Row 3: Reassign admin */}
               <div>
                 <label className="text-gray-400 text-xs uppercase tracking-wide block mb-1">
                   Reassign to Admin
@@ -480,13 +465,13 @@ export default function AdminComplaintDetailPage() {
                     .filter((a) => a.id !== user?.id)
                     .map((a) => (
                       <option key={a.id} value={a.id}>
-                        {a.name} ({a.role === "super_admin" ? "Super Admin" : "Admin"})
+                        {a.name} (
+                        {a.role === "super_admin" ? "Super Admin" : "Admin"})
                       </option>
                     ))}
                 </select>
               </div>
 
-              {/* Row 4: Internal note */}
               <div>
                 <label className="text-gray-400 text-xs uppercase tracking-wide block mb-1">
                   Internal Note (admin-only)
@@ -501,7 +486,6 @@ export default function AdminComplaintDetailPage() {
                 />
               </div>
 
-              {/* Row 5: Response to submitter */}
               <div>
                 <label className="text-gray-400 text-xs uppercase tracking-wide block mb-1">
                   Response to Submitter
@@ -516,7 +500,6 @@ export default function AdminComplaintDetailPage() {
                 />
               </div>
 
-              {/* Action buttons */}
               <div className="flex items-center gap-3 pt-2">
                 <button
                   onClick={handleSave}
@@ -539,9 +522,7 @@ export default function AdminComplaintDetailPage() {
           </div>
         </div>
 
-        {/* ── Right column: AI Analysis + Timeline + Metadata ── */}
         <div className="space-y-6">
-          {/* AI Status */}
           {complaint.ai_status && (
             <div className="glass-panel p-4 flex items-center justify-between">
               <div>
@@ -553,8 +534,8 @@ export default function AdminComplaintDetailPage() {
                     complaint.ai_status === "completed"
                       ? "text-green-400"
                       : complaint.ai_status === "pending"
-                        ? "text-yellow-400"
-                        : "text-red-400"
+                      ? "text-yellow-400"
+                      : "text-red-400"
                   }`}
                 >
                   {aiStatusLabel(complaint.ai_status)}
@@ -563,7 +544,6 @@ export default function AdminComplaintDetailPage() {
             </div>
           )}
 
-          {/* AI Analysis */}
           {complaint.ai_prediction && (
             <div className="glass-panel p-6 border-blue-500/20">
               <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
@@ -603,7 +583,9 @@ export default function AdminComplaintDetailPage() {
                   <div>
                     <p className="text-gray-400">Priority</p>
                     <p
-                      className={`font-medium ${priorityColor(complaint.ai_prediction.priority)}`}
+                      className={`font-medium ${priorityColor(
+                        complaint.ai_prediction.priority
+                      )}`}
                     >
                       {complaint.ai_prediction.priority.charAt(0).toUpperCase() +
                         complaint.ai_prediction.priority.slice(1)}
@@ -654,7 +636,6 @@ export default function AdminComplaintDetailPage() {
             </div>
           )}
 
-          {/* Duplicate Cluster */}
           {cluster && (
             <div className="glass-panel p-6">
               <h2 className="text-sm font-semibold mb-3">
@@ -672,14 +653,10 @@ export default function AdminComplaintDetailPage() {
                   >
                     <p className="text-sm font-medium truncate">{m.title}</p>
                     <div className="flex gap-2 mt-0.5">
-                      <span
-                        className={`text-xs ${statusColor(m.status)}`}
-                      >
+                      <span className={`text-xs ${statusColor(m.status)}`}>
                         {statusLabel(m.status)}
                       </span>
-                      <span
-                        className={`text-xs ${priorityColor(m.priority)}`}
-                      >
+                      <span className={`text-xs ${priorityColor(m.priority)}`}>
                         {m.priority || "\u2014"}
                       </span>
                     </div>
@@ -689,7 +666,6 @@ export default function AdminComplaintDetailPage() {
             </div>
           )}
 
-          {/* Timeline */}
           <div className="glass-panel p-6">
             <h2 className="text-sm font-semibold mb-4">Timeline</h2>
             {history.length === 0 ? (
@@ -706,10 +682,10 @@ export default function AdminComplaintDetailPage() {
                         h.action === "created"
                           ? "bg-blue-500 border-blue-400"
                           : h.action.startsWith("admin_")
-                            ? "bg-purple-500 border-purple-400"
-                            : h.action === "status_changed"
-                              ? "bg-yellow-500 border-yellow-400"
-                              : "bg-gray-600 border-gray-500"
+                          ? "bg-purple-500 border-purple-400"
+                          : h.action === "status_changed"
+                          ? "bg-yellow-500 border-yellow-400"
+                          : "bg-gray-600 border-gray-500"
                       }`}
                     />
                     <div>
@@ -737,7 +713,6 @@ export default function AdminComplaintDetailPage() {
             )}
           </div>
 
-          {/* Metadata */}
           <div className="glass-panel p-6">
             <h3 className="text-sm font-semibold mb-3">Details</h3>
             <dl className="space-y-2 text-sm">
@@ -769,6 +744,6 @@ export default function AdminComplaintDetailPage() {
           </div>
         </div>
       </div>
-    </div>
+    </AppShell>
   );
 }

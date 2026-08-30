@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { AppShell } from "@/components/layout/AppShell";
 import { fetchCurrentUser, clearToken, User } from "@/lib/auth";
 
 const NAV_CARDS = [
@@ -61,63 +62,46 @@ export default function SuperAdminDashboard() {
       .finally(() => setLoading(false));
   }, [router]);
 
-  function handleLogout() {
-    clearToken();
-    router.replace("/login");
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="glass-panel px-8 py-6">
-          <p className="text-gray-400">Loading...</p>
+        <div className="glass-panel-glow px-10 py-8 text-center">
+          <div className="w-8 h-8 border-2 border-accent-violet/30 border-t-accent-violet rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-400 text-sm">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen p-6">
-      {/* Header */}
-      <header className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold">Super Admin Dashboard</h1>
-          <p className="text-gray-400 text-sm">
-            Organization configuration and administration
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-gray-400 text-sm">{user?.name}</span>
-          <button onClick={handleLogout} className="btn-secondary text-sm">
-            Logout
-          </button>
-        </div>
-      </header>
-
-      {/* Quick Summary */}
+    <AppShell
+      user={user}
+      role="super_admin"
+      title="Super Admin Dashboard"
+      subtitle="Organization configuration and administration"
+    >
       <div className="glass-panel p-6 mb-6">
         <h2 className="text-lg font-semibold mb-2">
           Configuration Management
         </h2>
         <p className="text-gray-500 text-sm">
-          Configure your organization&apos;s structure, categories, admin accounts,
-          campus zones, and settings. Changes here affect how AI triage and routing
-          work across the platform.
+          Configure your organization&apos;s structure, categories, admin
+          accounts, campus zones, and settings. Changes here affect how AI
+          triage and routing work across the platform.
         </p>
       </div>
 
-      {/* Navigation Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {NAV_CARDS.map((card) => (
           <Link
             key={card.title}
             href={card.href}
-            className="glass-panel p-6 hover:bg-glass-hover transition-all duration-200 group"
+            className="glass-panel p-6 hover:bg-glass-hover hover:border-accent-violet/15 transition-all duration-200 group"
           >
             <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-600/20 flex items-center justify-center group-hover:bg-blue-600/30 transition-colors">
+              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-accent-violet/15 flex items-center justify-center group-hover:bg-accent-violet/25 transition-colors">
                 <svg
-                  className="w-5 h-5 text-blue-400"
+                  className="w-5 h-5 text-accent-purple"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -131,7 +115,7 @@ export default function SuperAdminDashboard() {
                 </svg>
               </div>
               <div>
-                <h3 className="text-base font-semibold group-hover:text-blue-400 transition-colors">
+                <h3 className="text-base font-semibold group-hover:text-accent-purple transition-colors">
                   {card.title}
                 </h3>
                 <p className="text-gray-500 text-sm mt-1">{card.desc}</p>
@@ -140,6 +124,6 @@ export default function SuperAdminDashboard() {
           </Link>
         ))}
       </div>
-    </div>
+    </AppShell>
   );
 }

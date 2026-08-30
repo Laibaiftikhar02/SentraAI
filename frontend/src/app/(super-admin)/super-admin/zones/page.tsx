@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { AppShell } from "@/components/layout/AppShell";
 import { fetchCurrentUser, clearToken, User } from "@/lib/auth";
 import {
   ConfigZone,
@@ -179,11 +180,6 @@ export default function ZoneManagement() {
     }
   }
 
-  function handleLogout() {
-    clearToken();
-    router.replace("/login");
-  }
-
   const renderPolygonPreview = useCallback(
     (polygon: number[][] | null) => {
       if (!polygon || polygon.length < 3) return null;
@@ -205,37 +201,21 @@ export default function ZoneManagement() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="glass-panel px-8 py-6">
-          <p className="text-gray-400">Loading...</p>
+        <div className="glass-panel-glow px-10 py-8 text-center">
+          <div className="w-8 h-8 border-2 border-accent-violet/30 border-t-accent-violet rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-400 text-sm">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen p-6">
-      {/* Header */}
-      <header className="flex items-center justify-between mb-8">
-        <div>
-          <Link
-            href="/super-admin"
-            className="text-blue-400 hover:text-blue-300 text-sm mb-2 inline-block"
-          >
-            &larr; Back to Dashboard
-          </Link>
-          <h1 className="text-2xl font-bold">Campus Zone Management</h1>
-          <p className="text-gray-400 text-sm">
-            Configure campus zones, buildings, and areas for the heatmap
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-gray-400 text-sm">{user?.name}</span>
-          <button onClick={handleLogout} className="btn-secondary text-sm">
-            Logout
-          </button>
-        </div>
-      </header>
-
+    <AppShell
+      user={user}
+      role="super_admin"
+      title="Campus Zone Management"
+      subtitle="Configure campus zones, buildings, and areas for the heatmap"
+    >
       {error && (
         <div className="glass-panel border-red-500/50 p-4 mb-4">
           <p className="text-red-400 text-sm">{error}</p>
@@ -528,6 +508,6 @@ export default function ZoneManagement() {
           </table>
         </div>
       </div>
-    </div>
+    </AppShell>
   );
 }

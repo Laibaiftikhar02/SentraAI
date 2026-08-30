@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { AppShell } from "@/components/layout/AppShell";
 import { fetchCurrentUser, clearToken, User } from "@/lib/auth";
 import {
   getAnalyticsComplaints,
@@ -18,8 +18,6 @@ import {
   DuplicateStatsItem,
   DepartmentPerformanceItem,
 } from "@/lib/complaints";
-
-// ── Bar Chart Component (pure CSS) ──────────────────────────────────────────
 
 function HorizontalBar({
   label,
@@ -49,8 +47,6 @@ function HorizontalBar({
   );
 }
 
-// ── Skeleton Loader ──────────────────────────────────────────────────────────
-
 function SkeletonCard() {
   return (
     <div className="glass-panel p-5 animate-pulse">
@@ -72,8 +68,6 @@ function SkeletonPanel() {
     </div>
   );
 }
-
-// ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AnalyticsDashboard() {
   const router = useRouter();
@@ -98,7 +92,6 @@ export default function AnalyticsDashboard() {
           return;
         }
         setUser(u);
-        // Fetch all analytics in parallel
         Promise.allSettled([
           getAnalyticsComplaints().then(setVolume),
           getAnalyticsUrgency().then(setUrgency),
@@ -122,57 +115,36 @@ export default function AnalyticsDashboard() {
       .finally(() => setLoading(false));
   }, [router]);
 
-  function handleLogout() {
-    clearToken();
-    router.replace("/login");
-  }
-
-  // ── Loading State ──────────────────────────────────────────────────────────
-
   if (loading) {
     return (
       <div className="min-h-screen p-6">
-        <header className="flex items-center justify-between mb-8">
-          <div>
+        <div className="max-w-[1600px] mx-auto">
+          <header className="mb-8">
             <h1 className="text-2xl font-bold">Analytics</h1>
             <p className="text-gray-400 text-sm">Loading dashboard data...</p>
+          </header>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
           </div>
-          <Link href="/admin/dashboard" className="btn-secondary text-sm">
-            Back to Dashboard
-          </Link>
-        </header>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
-          <SkeletonPanel />
-          <SkeletonPanel />
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <SkeletonPanel />
-          <SkeletonPanel />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+            <SkeletonPanel />
+            <SkeletonPanel />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <SkeletonPanel />
+            <SkeletonPanel />
+          </div>
         </div>
       </div>
     );
   }
 
-  // ── Error State ────────────────────────────────────────────────────────────
-
   if (error) {
     return (
-      <div className="min-h-screen p-6">
-        <header className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold">Analytics</h1>
-            <p className="text-gray-400 text-sm">Dashboard</p>
-          </div>
-          <Link href="/admin/dashboard" className="btn-secondary text-sm">
-            Back to Dashboard
-          </Link>
-        </header>
+      <AppShell user={user} role="admin" title="Analytics">
         <div className="glass-panel p-8 text-center">
           <p className="text-red-400 mb-4">{error}</p>
           <button
@@ -182,52 +154,26 @@ export default function AnalyticsDashboard() {
             Retry
           </button>
         </div>
-      </div>
+      </AppShell>
     );
   }
 
-  // ── Empty State ────────────────────────────────────────────────────────────
-
   const hasData = (volume?.total ?? 0) > 0;
-
-  // Urgency bar max for scaling
   const urgencyMax = urgency
-    ? Math.max(
-        urgency.critical,
-        urgency.high,
-        urgency.medium,
-        urgency.low,
-        1
-      )
+    ? Math.max(urgency.critical, urgency.high, urgency.medium, urgency.low, 1)
     : 1;
-
-  // Category bar max for scaling
   const categoryMax =
     categories.length > 0
       ? Math.max(...categories.map((c) => c.count), 1)
       : 1;
 
   return (
-    <div className="min-h-screen p-6">
-      {/* Header */}
-      <header className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold">Analytics</h1>
-          <p className="text-gray-400 text-sm">
-            Complaint analytics and insights
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/admin/dashboard" className="btn-secondary text-sm">
-            Back to Dashboard
-          </Link>
-          <button onClick={handleLogout} className="btn-secondary text-sm">
-            Logout
-          </button>
-        </div>
-      </header>
-
-      {/* Empty state */}
+    <AppShell
+      user={user}
+      role="admin"
+      title="Analytics"
+      subtitle="Complaint analytics and insights"
+    >
       {!hasData && (
         <div className="glass-panel p-8 text-center mb-8">
           <p className="text-gray-400 text-lg mb-2">No complaints yet</p>
@@ -237,35 +183,40 @@ export default function AnalyticsDashboard() {
         </div>
       )}
 
-      {/* ── Volume Stat Cards ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="glass-panel p-5">
-          <p className="text-gray-400 text-sm">Total Complaints</p>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 stagger-children">
+        <div className="stat-card">
+          <p className="text-gray-500 text-[10px] uppercase tracking-wider">
+            Total Complaints
+          </p>
           <p className="text-3xl font-bold mt-1">{volume?.total ?? 0}</p>
         </div>
-        <div className="glass-panel p-5">
-          <p className="text-gray-400 text-sm">Pending</p>
+        <div className="stat-card">
+          <p className="text-gray-500 text-[10px] uppercase tracking-wider">
+            Pending
+          </p>
           <p className="text-3xl font-bold mt-1 text-yellow-400">
             {volume?.pending ?? 0}
           </p>
         </div>
-        <div className="glass-panel p-5">
-          <p className="text-gray-400 text-sm">Resolved</p>
+        <div className="stat-card">
+          <p className="text-gray-500 text-[10px] uppercase tracking-wider">
+            Resolved
+          </p>
           <p className="text-3xl font-bold mt-1 text-green-400">
             {volume?.resolved ?? 0}
           </p>
         </div>
-        <div className="glass-panel p-5">
-          <p className="text-gray-400 text-sm">Resolution Rate</p>
-          <p className="text-3xl font-bold mt-1 text-blue-400">
+        <div className="stat-card">
+          <p className="text-gray-500 text-[10px] uppercase tracking-wider">
+            Resolution Rate
+          </p>
+          <p className="text-3xl font-bold mt-1 text-accent-cyan">
             {volume?.resolution_rate ?? 0}%
           </p>
         </div>
       </div>
 
-      {/* ── Urgency & Category Distribution ────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
-        {/* Urgency Distribution */}
         <div className="glass-panel p-6">
           <h2 className="text-lg font-semibold mb-4">Urgency Distribution</h2>
           {urgency && urgency.total > 0 ? (
@@ -274,25 +225,25 @@ export default function AnalyticsDashboard() {
                 label="Critical"
                 value={urgency.critical}
                 max={urgencyMax}
-                color="bg-red-500"
+                color="bg-urgency-critical"
               />
               <HorizontalBar
                 label="High"
                 value={urgency.high}
                 max={urgencyMax}
-                color="bg-orange-500"
+                color="bg-urgency-high"
               />
               <HorizontalBar
                 label="Medium"
                 value={urgency.medium}
                 max={urgencyMax}
-                color="bg-yellow-500"
+                color="bg-urgency-medium"
               />
               <HorizontalBar
                 label="Low"
                 value={urgency.low}
                 max={urgencyMax}
-                color="bg-green-500"
+                color="bg-urgency-low"
               />
               {urgency.unassigned > 0 && (
                 <HorizontalBar
@@ -310,11 +261,8 @@ export default function AnalyticsDashboard() {
           )}
         </div>
 
-        {/* Category Distribution */}
         <div className="glass-panel p-6">
-          <h2 className="text-lg font-semibold mb-4">
-            Category Distribution
-          </h2>
+          <h2 className="text-lg font-semibold mb-4">Category Distribution</h2>
           {categories.length > 0 && categories.some((c) => c.count > 0) ? (
             <div className="space-y-3 max-h-64 overflow-y-auto">
               {categories
@@ -325,7 +273,7 @@ export default function AnalyticsDashboard() {
                     label={cat.category_name}
                     value={cat.count}
                     max={categoryMax}
-                    color="bg-blue-500"
+                    color="bg-accent-violet"
                   />
                 ))}
             </div>
@@ -337,9 +285,7 @@ export default function AnalyticsDashboard() {
         </div>
       </div>
 
-      {/* ── Locations & Duplicates ─────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
-        {/* Top Campus Zones */}
         <div className="glass-panel p-6">
           <h2 className="text-lg font-semibold mb-4">Top Campus Zones</h2>
           {locations.length > 0 && locations.some((l) => l.total_reports > 0) ? (
@@ -389,17 +335,12 @@ export default function AnalyticsDashboard() {
               </table>
             </div>
           ) : (
-            <p className="text-gray-500 text-sm">
-              No zone data available yet.
-            </p>
+            <p className="text-gray-500 text-sm">No zone data available yet.</p>
           )}
         </div>
 
-        {/* Top Duplicate Clusters */}
         <div className="glass-panel p-6">
-          <h2 className="text-lg font-semibold mb-4">
-            Top Duplicate Clusters
-          </h2>
+          <h2 className="text-lg font-semibold mb-4">Top Duplicate Clusters</h2>
           {duplicates.length > 0 ? (
             <div className="space-y-3 max-h-64 overflow-y-auto">
               {duplicates.map((d) => (
@@ -422,10 +363,10 @@ export default function AnalyticsDashboard() {
                         d.highest_priority === "critical"
                           ? "text-red-400"
                           : d.highest_priority === "high"
-                            ? "text-orange-400"
-                            : d.highest_priority === "medium"
-                              ? "text-yellow-400"
-                              : "text-green-400"
+                          ? "text-orange-400"
+                          : d.highest_priority === "medium"
+                          ? "text-yellow-400"
+                          : "text-green-400"
                       }`}
                     >
                       {d.highest_priority.charAt(0).toUpperCase() +
@@ -443,7 +384,6 @@ export default function AnalyticsDashboard() {
         </div>
       </div>
 
-      {/* ── Department Performance ──────────────────────────────────────── */}
       <div className="glass-panel p-6 mb-8">
         <h2 className="text-lg font-semibold mb-4">Department Performance</h2>
         {departments.length > 0 && departments.some((d) => d.total > 0) ? (
@@ -480,13 +420,11 @@ export default function AnalyticsDashboard() {
                         <div className="flex items-center justify-end gap-2">
                           <div className="w-20 bg-navy-700 rounded-full h-2 overflow-hidden">
                             <div
-                              className="h-full rounded-full bg-blue-500"
-                              style={{
-                                width: `${dept.resolution_rate}%`,
-                              }}
+                              className="h-full rounded-full bg-accent-violet"
+                              style={{ width: `${dept.resolution_rate}%` }}
                             />
                           </div>
-                          <span className="text-blue-400 font-medium w-12 text-right">
+                          <span className="text-accent-purple font-medium w-12 text-right">
                             {dept.resolution_rate}%
                           </span>
                         </div>
@@ -502,6 +440,6 @@ export default function AnalyticsDashboard() {
           </p>
         )}
       </div>
-    </div>
+    </AppShell>
   );
 }

@@ -45,6 +45,7 @@ class AIPredictionResponse(BaseModel):
     duplicate_cluster_id: UUID | None = None
     needs_manual_review: bool = False
     provider: str | None = None
+    model_name: str | None = None
 
     model_config = {"from_attributes": True}
 

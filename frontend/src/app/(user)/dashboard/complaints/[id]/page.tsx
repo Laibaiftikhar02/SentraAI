@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
+import { AppShell } from "@/components/layout/AppShell";
 import { fetchCurrentUser, clearToken, User } from "@/lib/auth";
 import {
   getComplaint,
   getComplaintHistory,
   reprocessComplaint,
+  downloadAttachment,
   ComplaintDetail,
   HistoryEntry,
   statusLabel,
@@ -50,21 +53,21 @@ export default function ComplaintDetailPage() {
   useEffect(() => {
     if (!user || !complaintId) return;
     Promise.all([
-      getComplaint(complaintId).then(setComplaint).catch(() => setError("Failed to load complaint")),
-      getComplaintHistory(complaintId).then(setHistory).catch(() => {}),
+      getComplaint(complaintId)
+        .then(setComplaint)
+        .catch(() => setError("Failed to load complaint")),
+      getComplaintHistory(complaintId)
+        .then(setHistory)
+        .catch(() => {}),
     ]);
   }, [user, complaintId]);
-
-  function handleLogout() {
-    clearToken();
-    router.replace("/login");
-  }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="glass-panel px-8 py-6">
-          <p className="text-gray-400">Loading...</p>
+        <div className="glass-panel-glow px-10 py-8 text-center">
+          <div className="w-8 h-8 border-2 border-accent-violet/30 border-t-accent-violet rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-400 text-sm">Loading...</p>
         </div>
       </div>
     );
@@ -92,7 +95,6 @@ export default function ComplaintDetailPage() {
     setReprocessing(true);
     try {
       await reprocessComplaint(complaintId);
-      // Reload complaint data
       const [updated, hist] = await Promise.all([
         getComplaint(complaintId),
         getComplaintHistory(complaintId).catch(() => []),
@@ -107,73 +109,67 @@ export default function ComplaintDetailPage() {
   }
 
   return (
-    <div className="min-h-screen p-6">
-      {/* Header */}
-      <header className="flex items-center justify-between mb-8">
-        <div>
-          <button
-            onClick={() => router.push("/dashboard/complaints")}
-            className="text-gray-400 hover:text-white text-sm mb-2 transition-colors"
-          >
-            &larr; Back to Complaints
-          </button>
-          <h1 className="text-2xl font-bold">{complaint.title}</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            ID: {complaint.id.slice(0, 8)}... &bull; Submitted by{" "}
-            {complaint.submitter_name || "You"}
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-gray-400 text-sm">{user?.name}</span>
-          <button onClick={handleLogout} className="btn-secondary text-sm">
-            Logout
-          </button>
-        </div>
-      </header>
-
+    <AppShell
+      user={user}
+      role="user"
+      title={complaint.title}
+      subtitle={`ID: ${complaint.id.slice(0, 8)}... • Submitted by ${
+        complaint.submitter_name || "You"
+      }`}
+      actions={
+        <Link href="/dashboard/complaints" className="btn-secondary text-sm">
+          Back to Complaints
+        </Link>
+      }
+    >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column — Complaint details */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Status & Priority */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="glass-panel p-4">
-              <p className="text-gray-400 text-xs uppercase tracking-wide">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 stagger-children">
+            <div className="stat-card">
+              <p className="text-gray-500 text-[10px] uppercase tracking-wider">
                 Status
               </p>
-              <p className={`text-lg font-semibold mt-1 ${statusColor(complaint.status)}`}>
+              <p
+                className={`text-lg font-semibold mt-1 ${statusColor(
+                  complaint.status
+                )}`}
+              >
                 {statusLabel(complaint.status)}
               </p>
             </div>
-            <div className="glass-panel p-4">
-              <p className="text-gray-400 text-xs uppercase tracking-wide">
+            <div className="stat-card">
+              <p className="text-gray-500 text-[10px] uppercase tracking-wider">
                 Priority
               </p>
-              <p className={`text-lg font-semibold mt-1 ${priorityColor(complaint.priority)}`}>
+              <p
+                className={`text-lg font-semibold mt-1 ${priorityColor(
+                  complaint.priority
+                )}`}
+              >
                 {complaint.priority
                   ? complaint.priority.charAt(0).toUpperCase() +
                     complaint.priority.slice(1)
                   : "Pending"}
               </p>
             </div>
-            <div className="glass-panel p-4">
-              <p className="text-gray-400 text-xs uppercase tracking-wide">
+            <div className="stat-card">
+              <p className="text-gray-500 text-[10px] uppercase tracking-wider">
                 Category
               </p>
               <p className="text-lg font-semibold mt-1">
                 {complaint.category_name || "Pending"}
               </p>
             </div>
-            <div className="glass-panel p-4">
-              <p className="text-gray-400 text-xs uppercase tracking-wide">
+            <div className="stat-card">
+              <p className="text-gray-500 text-[10px] uppercase tracking-wider">
                 Location
               </p>
               <p className="text-lg font-semibold mt-1">
-                {complaint.zone_name || "—"}
+                {complaint.zone_name || "\u2014"}
               </p>
             </div>
           </div>
 
-          {/* Description */}
           <div className="glass-panel p-6">
             <h2 className="text-lg font-semibold mb-3">Description</h2>
             <p className="text-gray-300 whitespace-pre-wrap leading-relaxed">
@@ -181,7 +177,6 @@ export default function ComplaintDetailPage() {
             </p>
           </div>
 
-          {/* Attachments */}
           {complaint.attachments.length > 0 && (
             <div className="glass-panel p-6">
               <h2 className="text-lg font-semibold mb-3">
@@ -189,31 +184,37 @@ export default function ComplaintDetailPage() {
               </h2>
               <div className="space-y-2">
                 {complaint.attachments.map((a) => (
-                  <a
+                  <button
                     key={a.id}
-                    href={`/api/v1/complaints/${complaint.id}/attachments/${a.id}/download`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between glass-panel-light p-3 hover:bg-glass-light transition-colors"
+                    type="button"
+                    onClick={() =>
+                      downloadAttachment(
+                        complaint.id,
+                        a.id,
+                        a.original_filename
+                      ).catch(() => alert("Failed to download attachment."))
+                    }
+                    className="w-full flex items-center justify-between glass-panel-light p-3 hover:bg-glass-light transition-colors text-left"
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-blue-400 text-lg">&#128206;</span>
                       <div>
-                        <p className="text-sm font-medium">{a.original_filename}</p>
+                        <p className="text-sm font-medium">
+                          {a.original_filename}
+                        </p>
                         <p className="text-xs text-gray-500">
-                          {a.file_type} &bull;{" "}
-                          {(a.file_size / 1024).toFixed(1)} KB
+                          {a.file_type} &bull; {(a.file_size / 1024).toFixed(1)}{" "}
+                          KB
                         </p>
                       </div>
                     </div>
                     <span className="text-gray-400 text-sm">Download</span>
-                  </a>
+                  </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* AI Status Badge */}
           {complaint.ai_status && (
             <div className="glass-panel p-4 flex items-center justify-between">
               <div>
@@ -225,8 +226,8 @@ export default function ComplaintDetailPage() {
                     complaint.ai_status === "completed"
                       ? "text-green-400"
                       : complaint.ai_status === "pending"
-                        ? "text-yellow-400"
-                        : "text-red-400"
+                      ? "text-yellow-400"
+                      : "text-red-400"
                   }`}
                 >
                   {aiStatusLabel(complaint.ai_status)}
@@ -246,11 +247,10 @@ export default function ComplaintDetailPage() {
             </div>
           )}
 
-          {/* AI Prediction (if available) */}
           {complaint.ai_prediction && (
-            <div className="glass-panel p-6 border-blue-500/20">
+            <div className="glass-panel-glow p-6">
               <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                <span className="text-blue-400">&#9881;</span>
+                <span className="text-accent-violet">&#9881;</span>
                 AI Analysis
                 {complaint.ai_prediction.needs_manual_review && (
                   <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full">
@@ -278,19 +278,25 @@ export default function ComplaintDetailPage() {
                       {complaint.ai_prediction.category}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Confidence: {confidencePct(complaint.ai_prediction.category_confidence)}
+                      Confidence:{" "}
+                      {confidencePct(complaint.ai_prediction.category_confidence)}
                     </p>
                   </div>
                 )}
                 {complaint.ai_prediction.priority && (
                   <div>
                     <p className="text-gray-400">Priority</p>
-                    <p className={`font-medium ${priorityColor(complaint.ai_prediction.priority)}`}>
+                    <p
+                      className={`font-medium ${priorityColor(
+                        complaint.ai_prediction.priority
+                      )}`}
+                    >
                       {complaint.ai_prediction.priority.charAt(0).toUpperCase() +
                         complaint.ai_prediction.priority.slice(1)}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Confidence: {confidencePct(complaint.ai_prediction.priority_confidence)}
+                      Confidence:{" "}
+                      {confidencePct(complaint.ai_prediction.priority_confidence)}
                     </p>
                   </div>
                 )}
@@ -301,7 +307,8 @@ export default function ComplaintDetailPage() {
                       {complaint.ai_prediction.department}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Confidence: {confidencePct(complaint.ai_prediction.routing_confidence)}
+                      Confidence:{" "}
+                      {confidencePct(complaint.ai_prediction.routing_confidence)}
                     </p>
                   </div>
                 )}
@@ -337,7 +344,6 @@ export default function ComplaintDetailPage() {
           )}
         </div>
 
-        {/* Right column — Timeline */}
         <div>
           <div className="glass-panel p-6">
             <h2 className="text-lg font-semibold mb-4">Timeline</h2>
@@ -347,11 +353,9 @@ export default function ComplaintDetailPage() {
               <div className="space-y-0">
                 {history.map((h, i) => (
                   <div key={h.id} className="relative pl-6 pb-6 last:pb-0">
-                    {/* Vertical line */}
                     {i < history.length - 1 && (
                       <div className="absolute left-[7px] top-3 bottom-0 w-px bg-glass-border" />
                     )}
-                    {/* Dot */}
                     <div
                       className={`absolute left-0 top-1.5 w-3.5 h-3.5 rounded-full border-2 ${
                         h.action === "created"
@@ -378,7 +382,6 @@ export default function ComplaintDetailPage() {
             )}
           </div>
 
-          {/* Metadata */}
           <div className="glass-panel p-6 mt-4">
             <h3 className="text-sm font-semibold mb-3">Details</h3>
             <dl className="space-y-2 text-sm">
@@ -400,6 +403,6 @@ export default function ComplaintDetailPage() {
           </div>
         </div>
       </div>
-    </div>
+    </AppShell>
   );
 }

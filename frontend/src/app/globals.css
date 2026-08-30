@@ -3,46 +3,98 @@
 @tailwind utilities;
 
 :root {
-  --navy-900: #0a0e1a;
-  --navy-800: #0f1629;
-  --navy-700: #151d35;
-  --glass-bg: rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-hover: rgba(255, 255, 255, 0.08);
+  --navy-900: #080c18;
+  --navy-800: #0c1225;
+  --navy-700: #121a33;
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-hover: rgba(255, 255, 255, 0.06);
+  --accent-purple: #a78bfa;
+  --accent-violet: #8b5cf6;
+  --accent-deep: #7c3aed;
+  --accent-cyan: #22d3ee;
 }
+
+/* ── Base ──────────────────────────────────────────────────────────────────── */
 
 body {
   @apply bg-navy-900 text-white antialiased;
   font-family: "Inter", system-ui, -apple-system, sans-serif;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(139, 92, 246, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(34, 211, 238, 0.06) 0%, transparent 50%),
+    var(--navy-900);
+  min-height: 100vh;
 }
 
-/* Glassmorphism panel utility */
+/* ── Glassmorphism Components ──────────────────────────────────────────────── */
+
 @layer components {
   .glass-panel {
     @apply bg-glass border border-glass-border rounded-xl backdrop-blur-xl;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.02),
+      0 4px 24px -2px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
+
   .glass-panel-light {
     @apply bg-glass-light border border-glass-border rounded-xl backdrop-blur-xl;
+    box-shadow:
+      0 2px 12px -2px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
   }
+
+  /* Elevated panel with purple ambient glow */
+  .glass-panel-glow {
+    @apply glass-panel;
+    box-shadow:
+      0 0 0 1px rgba(167, 139, 250, 0.08),
+      0 4px 24px -2px rgba(0, 0, 0, 0.3),
+      0 0 40px -10px rgba(139, 92, 246, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
   .glass-input {
-    @apply bg-navy-700 border border-glass-border rounded-lg px-4 py-2.5
+    @apply bg-navy-700/80 border border-glass-border rounded-lg px-4 py-2.5
            text-white placeholder-gray-500
-           focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40
+           focus:outline-none focus:ring-2 focus:ring-accent-violet/30 focus:border-accent-violet/40
            transition-all duration-200;
   }
+
   .btn-primary {
-    @apply bg-blue-600 hover:bg-blue-500 text-white font-medium
-           px-6 py-2.5 rounded-lg transition-all duration-200
+    @apply text-white font-medium px-6 py-2.5 rounded-lg transition-all duration-200
            disabled:opacity-50 disabled:cursor-not-allowed;
+    background: linear-gradient(135deg, var(--accent-violet) 0%, var(--accent-deep) 100%);
+    box-shadow: 0 2px 12px -2px rgba(139, 92, 246, 0.3);
   }
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 4px 20px -2px rgba(139, 92, 246, 0.45);
+    filter: brightness(1.1);
+  }
+
   .btn-secondary {
     @apply bg-glass hover:bg-glass-light border border-glass-border
            text-white font-medium px-6 py-2.5 rounded-lg
            transition-all duration-200;
   }
+  .btn-secondary:hover {
+    border-color: rgba(167, 139, 250, 0.25);
+  }
+
+  /* Stat card with colored top accent */
+  .stat-card {
+    @apply glass-panel p-5 relative overflow-hidden;
+  }
+  .stat-card::before {
+    content: "";
+    @apply absolute top-0 left-0 right-0 h-px;
+    background: linear-gradient(90deg, transparent, rgba(167, 139, 250, 0.3), transparent);
+  }
 }
 
-/* Scrollbar styling */
+/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
+
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -50,19 +102,80 @@ body {
   background: var(--navy-900);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 3px;
 }
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
 
-/* Chatbot styles */
+/* ── Chatbot ───────────────────────────────────────────────────────────────── */
+
 @layer components {
   .chat-bubble-bot {
     @apply bg-glass-light border border-glass-border rounded-2xl text-gray-200;
   }
   .chat-bubble-user {
-    @apply bg-blue-600/20 border border-blue-500/30 rounded-2xl text-white;
+    @apply rounded-2xl text-white;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(124, 58, 237, 0.2));
+    border: 1px solid rgba(139, 92, 246, 0.3);
   }
   .chat-preview-card {
-    @apply bg-navy-700/80 border border-blue-500/30 rounded-xl;
+    @apply bg-navy-700/80 border rounded-xl;
+    border-color: rgba(139, 92, 246, 0.25);
+  }
+}
+
+/* ── Animated counter (count-up effect via CSS) ────────────────────────────── */
+
+@layer utilities {
+  .text-gradient-purple {
+    background: linear-gradient(135deg, var(--accent-purple), var(--accent-violet));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .text-gradient-cyan {
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-teal));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .border-glow-purple {
+    box-shadow: 0 0 20px -5px rgba(139, 92, 246, 0.15);
+  }
+  .border-glow-cyan {
+    box-shadow: 0 0 20px -5px rgba(34, 211, 238, 0.12);
+  }
+}
+
+/* ── Stagger children animation ────────────────────────────────────────────── */
+
+.stagger-children > * {
+  animation: fadeInUp 0.5s ease-out both;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.10s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.20s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.30s; }
+.stagger-children > *:nth-child(7) { animation-delay: 0.35s; }
+.stagger-children > *:nth-child(8) { animation-delay: 0.40s; }
+
+/* ── Priority badge enhancement ────────────────────────────────────────────── */
+
+@layer components {
+  .badge-critical {
+    @apply bg-red-500/15 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-high {
+    @apply bg-orange-500/15 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-medium {
+    @apply bg-yellow-500/15 text-yellow-400 border border-yellow-500/20 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-low {
+    @apply bg-green-500/15 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full text-xs font-medium;
   }
 }

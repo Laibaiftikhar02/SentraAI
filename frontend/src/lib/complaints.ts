@@ -26,6 +26,7 @@ export interface AIPrediction {
   duplicate_cluster_id: string | null;
   needs_manual_review: boolean;
   provider: string | null;
+  model_name: string | null;
 }
 
 export interface ComplaintDetail {
@@ -234,6 +235,38 @@ export function aiStatusLabel(status: string | null): string {
 export function confidencePct(value: number | null): string {
   if (value == null) return "\u2014";
   return `${Math.round(value * 100)}%`;
+}
+
+// ── Authenticated Attachment Download ─────────────────────────────────────────
+
+/**
+ * Download an attachment with JWT authentication.
+ * Uses fetch + Blob + object URL so the Authorization header is included.
+ */
+export async function downloadAttachment(
+  complaintId: string,
+  attachmentId: string,
+  filename: string
+): Promise<void> {
+  const token = localStorage.getItem("sentraai_token");
+  const resp = await fetch(
+    `/api/v1/complaints/${complaintId}/attachments/${attachmentId}/download`,
+    {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }
+  );
+  if (!resp.ok) {
+    throw new Error(`Download failed (${resp.status})`);
+  }
+  const blob = await resp.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ── Admin Types ──────────────────────────────────────────────────────────────

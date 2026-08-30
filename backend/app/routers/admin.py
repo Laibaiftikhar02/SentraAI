@@ -201,6 +201,7 @@ def admin_complaint_detail(
                 "duplicate_cluster_id": c.ai_prediction.duplicate_cluster_id,
                 "needs_manual_review": c.ai_prediction.needs_manual_review,
                 "provider": c.ai_prediction.provider,
+                "model_name": c.ai_prediction.model_name,
             }
         ),
     )

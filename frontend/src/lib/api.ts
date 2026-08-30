@@ -7,6 +7,28 @@ interface ApiOptions extends RequestInit {
 // Guard flag to prevent multiple concurrent 401 redirects
 let isRedirectingTo401 = false;
 
+// Helper: extract meaningful error detail from a backend response
+async function extractErrorDetail(
+  response: Response,
+  fallback: string
+): Promise<string> {
+  try {
+    const body = await response.json();
+    if (typeof body.detail === "string") return body.detail;
+    // FastAPI 422 validation: detail is an array of { loc, msg, type }
+    if (Array.isArray(body.detail)) {
+      const msgs = body.detail
+        .map((e: { msg?: string }) => e.msg)
+        .filter(Boolean);
+      if (msgs.length > 0) return msgs.join("; ");
+    }
+    if (typeof body.message === "string") return body.message;
+  } catch {
+    // response body is not JSON — fall through
+  }
+  return fallback;
+}
+
 class ApiClient {
   private getToken(): string | null {
     if (typeof window === "undefined") return null;
@@ -48,23 +70,29 @@ class ApiClient {
           localStorage.removeItem("sentraai_token");
           window.location.href = "/session-expired";
           // Reset guard after navigation has time to fire
-          setTimeout(() => { isRedirectingTo401 = false; }, 3000);
+          setTimeout(() => {
+            isRedirectingTo401 = false;
+          }, 3000);
         }
         // else: token was replaced by a fresh login — do NOT redirect
       }
-      throw new Error("Unauthorized");
+      const detail = await extractErrorDetail(response, "Unauthorized");
+      throw new Error(detail);
     }
 
     if (response.status === 403) {
-      throw new Error("Forbidden");
+      const detail = await extractErrorDetail(response, "Forbidden");
+      throw new Error(detail);
     }
 
     if (response.status === 404) {
-      throw new Error("Not Found");
+      const detail = await extractErrorDetail(response, "Not Found");
+      throw new Error(detail);
     }
 
     if (response.status >= 500) {
-      throw new Error("Server Error");
+      const detail = await extractErrorDetail(response, "Server Error");
+      throw new Error(detail);
     }
 
     if (!response.ok) {
@@ -72,6 +100,11 @@ class ApiClient {
         detail: response.statusText,
       }));
       throw new Error(error.detail || "Request failed");
+    }
+
+    // 204 No Content — return undefined instead of parsing empty JSON
+    if (response.status === 204) {
+      return undefined as T;
     }
 
     return response.json();
