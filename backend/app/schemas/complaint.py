@@ -90,7 +90,9 @@ class ComplaintListItem(BaseModel):
     ai_status: str | None = None
     category_name: str | None = None
     department_name: str | None = None
+    zone_id: UUID | None = None
     zone_name: str | None = None
+    duplicate_cluster_id: UUID | None = None
     ai_summary: str | None = None
     assigned_admin: str | None = None
     created_at: datetime

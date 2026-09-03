@@ -28,6 +28,9 @@ uploads/*
 # Alembic
 migrations/versions/*.pyc
 
+# Test cache
+.pytest_cache/
+
 # OS
 .DS_Store
 Thumbs.db

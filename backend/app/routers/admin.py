@@ -131,7 +131,9 @@ def admin_list_complaints(
                 ai_status=c.ai_status,
                 category_name=c.category.name if c.category else None,
                 department_name=c.department.name if c.department else None,
+                zone_id=c.zone_id,
                 zone_name=c.zone.name if c.zone else None,
+                duplicate_cluster_id=c.duplicate_cluster_id,
                 ai_summary=(
                     c.ai_prediction.summary[:120] + "..."
                     if c.ai_prediction and c.ai_prediction.summary and len(c.ai_prediction.summary) > 120

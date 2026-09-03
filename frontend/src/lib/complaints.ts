@@ -60,7 +60,9 @@ export interface ComplaintListItem {
   ai_status: string | null;
   category_name: string | null;
   department_name: string | null;
+  zone_id: string | null;
   zone_name: string | null;
+  duplicate_cluster_id: string | null;
   ai_summary: string | null;
   assigned_admin: string | null;
   created_at: string;

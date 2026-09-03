@@ -6,13 +6,33 @@ Tests student, admin, and super_admin accounts.
 """
 
 import json
+import os
 import sys
 import urllib.request
 import urllib.error
 
+from dotenv import load_dotenv
+
+# Load credentials from the backend .env file so tests use the same
+# seeded passwords the application expects.
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
+
 BASE = "http://localhost:8000"
 PASS = 0
 FAIL = 0
+
+# Seeded test account credentials come from environment/config only.
+USER_EMAIL = os.environ.get("SEED_USER_EMAIL", "student1@sentraai.dev")
+SA_EMAIL = os.environ.get("SEED_SUPER_ADMIN_EMAIL", "superadmin@sentraai.dev")
+USER_PASSWORD = os.environ.get("SEED_USER_PASSWORD")
+SA_PASSWORD = os.environ.get("SEED_SUPER_ADMIN_PASSWORD")
+
+if not all([USER_PASSWORD, SA_PASSWORD]):
+    raise RuntimeError(
+        "Seed passwords not found in environment. "
+        "Ensure SEED_USER_PASSWORD and SEED_SUPER_ADMIN_PASSWORD "
+        "are set in backend/.env"
+    )
 
 
 def req(method, path, body=None, token=None):
@@ -41,7 +61,7 @@ def check(name, ok):
         print(f"  FAIL  {name}")
 
 
-def test_login_logout_cycles(email, password, role_label, cycles=3):
+def run_login_logout_cycles(email, password, role_label, cycles=3):
     """Test repeated login/logout cycles for a given account."""
     print(f"\n{'='*60}")
     print(f"Testing {role_label}: {email} — {cycles} cycles")
@@ -92,8 +112,8 @@ def test_token_still_valid_after_other_request():
 
     # Login
     status, data = req("POST", "/api/v1/auth/login", {
-        "email": "student1@sentraai.dev",
-        "password": "Student123!",
+        "email": USER_EMAIL,
+        "password": USER_PASSWORD,
     })
     check("Login for persistence test", status == 200)
     token = data.get("access_token", "")
@@ -111,10 +131,10 @@ def test_token_still_valid_after_other_request():
 # ── Run all tests ─────────────────────────────────────────────────────────
 
 # Student: 3 login/logout cycles
-test_login_logout_cycles("student1@sentraai.dev", "Student123!", "Student", cycles=3)
+run_login_logout_cycles(USER_EMAIL, USER_PASSWORD, "Student", cycles=3)
 
 # Super Admin: 3 cycles
-test_login_logout_cycles("superadmin@sentraai.dev", "SuperAdmin123!", "Super Admin", cycles=3)
+run_login_logout_cycles(SA_EMAIL, SA_PASSWORD, "Super Admin", cycles=3)
 
 # Token persistence test
 test_token_still_valid_after_other_request()

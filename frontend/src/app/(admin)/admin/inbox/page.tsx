@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, Suspense } from "react";
+import { useEffect, useState, useCallback, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
@@ -216,6 +216,58 @@ function AdminInboxContent() {
     }
   }
 
+  // Group visible complaints by duplicate cluster + zone.
+  // A duplicate cluster groups similar issues; zone is included in the key so
+  // identical issues in different locations stay separate.
+  // IMPORTANT: this useMemo must be called unconditionally, before any early return.
+  const groupedComplaints = useMemo(() => {
+    const map = new Map<
+      string,
+      { items: ComplaintListItem[]; count: number }
+    >();
+
+    for (const c of complaints) {
+      const key = c.duplicate_cluster_id
+        ? `${c.zone_id || "__no_zone__"}:${c.duplicate_cluster_id}`
+        : `__standalone__:${c.id}`;
+      const existing = map.get(key);
+      if (existing) {
+        existing.items.push(c);
+        existing.count += 1;
+      } else {
+        map.set(key, { items: [c], count: 1 });
+      }
+    }
+
+    return Array.from(map.values())
+      .map((group) => {
+        // Representative = highest priority, then most recent
+        const representative = [...group.items].sort(
+          (a, b) =>
+            priorityWeight(b.priority) - priorityWeight(a.priority) ||
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )[0];
+        const highestPriority = group.items.reduce((best, item) =>
+          priorityWeight(item.priority) > priorityWeight(best.priority)
+            ? item
+            : best
+        , group.items[0]);
+        return {
+          representative,
+          count: group.count,
+          highestPriority,
+          ids: group.items.map((i) => i.id),
+        };
+      })
+      .sort(
+        (a, b) =>
+          priorityWeight(b.highestPriority.priority) -
+            priorityWeight(a.highestPriority.priority) ||
+          new Date(b.representative.created_at).getTime() -
+            new Date(a.representative.created_at).getTime()
+      );
+  }, [complaints]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -228,12 +280,6 @@ function AdminInboxContent() {
   }
 
   const totalPages = Math.ceil(total / 20);
-
-  const sortedComplaints = [...complaints].sort(
-    (a, b) =>
-      priorityWeight(b.priority) - priorityWeight(a.priority) ||
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
 
   return (
     <AppShell
@@ -412,8 +458,11 @@ function AdminInboxContent() {
                 </tr>
               </thead>
               <tbody>
-                {sortedComplaints.map((c) => {
-                  const canResolve = RESOLVABLE_STATUSES.includes(c.status);
+                {groupedComplaints.map((group) => {
+                  const c = group.representative;
+                  const isGroup = group.count > 1;
+                  const canResolve =
+                    !isGroup && RESOLVABLE_STATUSES.includes(c.status);
                   const rowAccent =
                     c.priority === "critical"
                       ? "border-l-2 border-urgency-critical bg-red-500/[0.03]"
@@ -432,12 +481,19 @@ function AdminInboxContent() {
                         {c.id.slice(0, 8)}
                       </td>
                       <td
-                        className="px-3 py-3 max-w-[200px] cursor-pointer"
+                        className="px-3 py-3 max-w-[240px] cursor-pointer"
                         onClick={() => router.push(`/admin/complaints/${c.id}`)}
                       >
-                        <span className="font-medium text-white text-sm truncate block">
-                          {c.title}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-white text-sm truncate block">
+                            {c.title}
+                          </span>
+                          {isGroup && (
+                            <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-accent-violet/20 text-accent-purple border border-accent-violet/30">
+                              {group.count} reports
+                            </span>
+                          )}
+                        </div>
                         {c.ai_summary && (
                           <p className="text-xs text-gray-500 truncate">
                             {c.ai_summary}
