@@ -130,19 +130,20 @@ def test_token_still_valid_after_other_request():
 
 # ── Run all tests ─────────────────────────────────────────────────────────
 
-# Student: 3 login/logout cycles
-run_login_logout_cycles(USER_EMAIL, USER_PASSWORD, "Student", cycles=3)
+if __name__ == "__main__":
+    # Student: 3 login/logout cycles
+    run_login_logout_cycles(USER_EMAIL, USER_PASSWORD, "Student", cycles=3)
 
-# Super Admin: 3 cycles
-run_login_logout_cycles(SA_EMAIL, SA_PASSWORD, "Super Admin", cycles=3)
+    # Super Admin: 3 cycles
+    run_login_logout_cycles(SA_EMAIL, SA_PASSWORD, "Super Admin", cycles=3)
 
-# Token persistence test
-test_token_still_valid_after_other_request()
+    # Token persistence test
+    test_token_still_valid_after_other_request()
 
-# ── Summary ───────────────────────────────────────────────────────────────
-print(f"\n{'='*60}")
-print(f"Results: {PASS} passed, {FAIL} failed, {PASS + FAIL} total")
-print(f"{'='*60}")
+    # ── Summary ───────────────────────────────────────────────────────────────
+    print(f"\n{'='*60}")
+    print(f"Results: {PASS} passed, {FAIL} failed, {PASS + FAIL} total")
+    print(f"{'='*60}")
 
-if FAIL > 0:
-    sys.exit(1)
+    if FAIL > 0:
+        sys.exit(1)

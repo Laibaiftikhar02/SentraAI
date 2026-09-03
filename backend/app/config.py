@@ -4,7 +4,7 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     # Database
-    database_url: str = "postgresql://postgres:postgres@localhost:5432/sentraai_dev"
+    database_url: str = "postgresql://postgres:YOUR_PASSWORD@localhost:5432/sentraai_dev"
 
     # JWT
     jwt_secret_key: str = "CHANGE_ME_TO_A_RANDOM_STRING"
